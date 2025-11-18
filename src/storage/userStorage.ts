@@ -1,36 +1,44 @@
 // src/storage/userStorage.ts
-// Работа с профилем пользователя через AsyncStorage.
-
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type UserProfile = {
-    name: string
-    isStaff: boolean
-}
+  name: string;
+  isStaff: boolean;
+  avatarUri: string | null;
+};
 
-const USER_PROFILE_KEY = 'USER_PROFILE'
+const USER_PROFILE_KEY = "userProfile";
 
-// Сохранение профиля пользователя в локальное хранилище.
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
-    const json = JSON.stringify(profile)
-    await AsyncStorage.setItem(USER_PROFILE_KEY, json)
+  try {
+    await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+  } catch (e) {
+    console.warn("saveUserProfile error", e);
+  }
 }
 
-// Загрузка профиля пользователя из локального хранилища.
 export async function loadUserProfile(): Promise<UserProfile | null> {
-    const json = await AsyncStorage.getItem(USER_PROFILE_KEY)
-    if (!json) {
-        return null
-    }
+  try {
+    const json = await AsyncStorage.getItem(USER_PROFILE_KEY);
+    if (!json) return null;
 
-    try {
-        return JSON.parse(json) as UserProfile
-    } catch {
-        return null
-    }
+    const raw = JSON.parse(json) as Partial<UserProfile>;
+
+    return {
+      name: raw.name ?? "",
+      isStaff: !!raw.isStaff,
+      avatarUri: raw.avatarUri ?? null,
+    };
+  } catch (e) {
+    console.warn("loadUserProfile error", e);
+    return null;
+  }
 }
 
-// Очистка профиля (на будущее, если пригодится).
 export async function clearUserProfile(): Promise<void> {
-    await AsyncStorage.removeItem(USER_PROFILE_KEY)
+  try {
+    await AsyncStorage.removeItem(USER_PROFILE_KEY);
+  } catch (e) {
+    console.warn("clearUserProfile error", e);
+  }
 }

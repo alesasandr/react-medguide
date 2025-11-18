@@ -1,160 +1,191 @@
 // src/screens/InstructionsListScreen.tsx
-import React from 'react'
+import React, { useEffect, useState } from "react";
 import {
-	View,
-	Text,
-	FlatList,
-	TouchableOpacity,
-	StyleSheet,
-	ActivityIndicator
-} from 'react-native'
-import { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { RootStackParamList } from '../navigation/AppNavigator'
-import { useInstructions } from '../hooks/useInstructions'
-import { Instruction } from '../api/instructionsApi'
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/AppNavigation";
+import { fetchInstructions, type Instruction } from "../api/instructionsApi";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'InstructionsList'>
+type Props = NativeStackScreenProps<RootStackParamList, "InstructionsList">;
 
-// Экран списка инструкций в стиле Telegram
+// Список инструкций в стиле Telegram
 const InstructionsListScreen: React.FC<Props> = ({ navigation }) => {
-	const { instructions, isLoading, error } = useInstructions()
+  const [items, setItems] = useState<Instruction[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-	const renderItem = ({ item }: { item: Instruction }) => (
-		<TouchableOpacity
-			style={styles.item}
-			onPress={() =>
-				navigation.navigate('InstructionDetails', { id: item.id })
-			}
-		>
-			<View style={styles.itemTextBlock}>
-				<Text style={styles.itemTitle}>{item.title}</Text>
-				<Text style={styles.itemDescription} numberOfLines={2}>
-					{item.shortDescription}
-				</Text>
-			</View>
-			<Text style={styles.itemChevron}>{'›'}</Text>
-		</TouchableOpacity>
-	)
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
 
-	if (isLoading) {
-		return (
-			<View style={styles.root}>
-				<View style={styles.cardCenter}>
-					<ActivityIndicator size='large' color='#3390ec' />
-					<Text style={styles.centerText}>Загружаем инструкции...</Text>
-				</View>
-			</View>
-		)
-	}
+      try {
+        const data = await fetchInstructions();
+        setItems(data);
+      } catch (e) {
+        console.log("Load instructions error:", e);
+        setError("Не удалось загрузить инструкции");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-	if (error) {
-		return (
-			<View style={styles.root}>
-				<View style={styles.cardCenter}>
-					<Text style={styles.error}>{error}</Text>
-				</View>
-			</View>
-		)
-	}
+    load();
+  }, []);
 
-	return (
-		<View style={styles.root}>
-			<View style={styles.card}>
-				<Text style={styles.header}>Инструкции для пациентов</Text>
+  const openDetails = (item: Instruction) => {
+  navigation.navigate("InstructionDetails", {
+    id: item.id
+  });
+};
 
-				<FlatList
-					data={instructions}
-					keyExtractor={(item) => item.id}
-					renderItem={renderItem}
-					contentContainerStyle={styles.listContent}
-				/>
-			</View>
-		</View>
-	)
-}
+
+  if (isLoading) {
+    return (
+      <View style={styles.root}>
+        <View style={styles.cardCenter}>
+          <ActivityIndicator size="large" color="#3390ec" />
+          <Text style={styles.loadingText}>Загружаем инструкции...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.root}>
+        <View style={styles.cardCenter}>
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!items.length) {
+    return (
+      <View style={styles.root}>
+        <View style={styles.cardCenter}>
+          <Text style={styles.emptyText}>Инструкции пока не добавлены</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.root}>
+      <View style={styles.card}>
+        <FlatList
+          data={items}
+          keyExtractor={(item) => String(item.id)}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => openDetails(item)}
+            >
+              <View style={styles.iconCircle}>
+                <Text style={styles.iconText}>📄</Text>
+              </View>
+              <View style={styles.textBlock}>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.subtitle} numberOfLines={2}>
+                  {item.shortText}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
-	root: {
-		flex: 1,
-		backgroundColor: '#e9edf5',
-		padding: 16
-	},
-	card: {
-		flex: 1,
-		backgroundColor: '#ffffff',
-		borderRadius: 20,
-		padding: 16,
-		shadowColor: '#000',
-		shadowOpacity: 0.08,
-		shadowRadius: 12,
-		shadowOffset: { width: 0, height: 4 },
-		elevation: 4
-	},
-	cardCenter: {
-		flex: 1,
-		backgroundColor: '#ffffff',
-		borderRadius: 20,
-		padding: 16,
-		shadowColor: '#000',
-		shadowOpacity: 0.08,
-		shadowRadius: 12,
-		shadowOffset: { width: 0, height: 4 },
-		elevation: 4,
-		alignItems: 'center',
-		justifyContent: 'center',
-		gap: 12
-	},
-	header: {
-		fontSize: 18,
-		fontWeight: '600',
-		color: '#000',
-		marginBottom: 12
-	},
-	listContent: {
-		gap: 8,
-		paddingBottom: 8
-	},
-	item: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingVertical: 10,
-		paddingHorizontal: 12,
-		backgroundColor: '#ffffff',
-		borderRadius: 16,
-		shadowColor: '#000',
-		shadowOpacity: 0.04,
-		shadowRadius: 8,
-		shadowOffset: { width: 0, height: 2 },
-		elevation: 2
-	},
-	itemTextBlock: {
-		flex: 1,
-		gap: 2
-	},
-	itemTitle: {
-		fontSize: 15,
-		fontWeight: '600',
-		color: '#000'
-	},
-	itemDescription: {
-		fontSize: 13,
-		color: '#6c6c6c'
-	},
-	itemChevron: {
-		fontSize: 22,
-		color: '#b0b0b0',
-		marginLeft: 8
-	},
-	centerText: {
-		fontSize: 15,
-		color: '#4a4a4a',
-		textAlign: 'center'
-	},
-	error: {
-		fontSize: 16,
-		color: 'red',
-		textAlign: 'center'
-	}
-})
+  root: {
+    flex: 1,
+    backgroundColor: "#e9edf5",
+    padding: 16,
+  },
+  card: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  cardCenter: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#f0f0f0",
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#d2e6ff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  iconText: {
+    fontSize: 20,
+  },
+  textBlock: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#000",
+  },
+  subtitle: {
+    fontSize: 13,
+    color: "#6c6c6c",
+    marginTop: 2,
+  },
+  loadingText: {
+    fontSize: 15,
+    color: "#4a4a4a",
+    textAlign: "center",
+  },
+  emptyText: {
+    fontSize: 15,
+    color: "#4a4a4a",
+    textAlign: "center",
+  },
+  error: {
+    fontSize: 16,
+    color: "red",
+    textAlign: "center",
+  },
+});
 
-export default InstructionsListScreen
+export default InstructionsListScreen;

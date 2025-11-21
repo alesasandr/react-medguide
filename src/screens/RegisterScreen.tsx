@@ -60,11 +60,13 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       navigation.replace("Home");
     } catch (e: any) {
       console.log("Register error:", e);
-      if (e?.code === "EMAIL_EXISTS") {
-        Alert.alert("Ошибка", "Пользователь с таким e-mail уже существует");
-      } else {
-        Alert.alert("Ошибка", "Не удалось создать аккаунт");
-      }
+      const message =
+        (e && e.message) ||
+        (typeof e === "string" ? e : "Неизвестная ошибка");
+      Alert.alert(
+        "Ошибка регистрации",
+        `Не удалось создать аккаунт:\n${message}`
+      );
     } finally {
       setIsSubmitting(false);
     }

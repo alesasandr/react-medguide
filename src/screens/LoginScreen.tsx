@@ -12,15 +12,13 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
+import { loginUser } from "../services/authService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // доп. флажок, если сервер не отдаёт is_staff
   const [isStaffSwitch, setIsStaffSwitch] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,41 +31,27 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password: password.trim(),
-        }),
+      const user = await loginUser({
+        email: email.trim(),
+        password: password.trim(),
       });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.log("Login error:", errText);
-        Alert.alert("Ошибка", "Неверные данные для входа");
-        return;
-      }
-
-      const data = await response.json();
-      const user = data.user ?? {};
-      const name = user.full_name || user.email || email.trim();
-
-      const isStaff =
-        typeof user.is_staff === "boolean" ? user.is_staff : isStaffSwitch;
-
       await saveUserProfile({
-        name,
-        isStaff,
-        avatarUri: user.avatar_url ?? null,
+        name: user.full_name || user.email,
+        isStaff: user.is_staff ?? isStaffSwitch,
+        avatarUri: null,
       });
 
       navigation.replace("Home");
-    } catch (e) {
-      console.log("Network login error:", e);
-      Alert.alert("Ошибка", "Сетевая ошибка при входе");
+    } catch (e: any) {
+      console.log("Login error:", e);
+      if (e?.code === "USER_NOT_FOUND") {
+        Alert.alert("Ошибка", "Пользователь не найден");
+      } else if (e?.code === "WRONG_PASSWORD") {
+        Alert.alert("Ошибка", "Неверный пароль");
+      } else {
+        Alert.alert("Ошибка", "Не удалось выполнить вход");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -76,22 +60,25 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.root}>
       <View style={styles.card}>
-        <Text style={styles.title}>Вход</Text>
+        <Text style={styles.title}>Добро пожаловать</Text>
+        <Text style={styles.subtitle}>
+          Войдите в личный кабинет, чтобы продолжить
+        </Text>
 
-        <View style={styles.field}>
+        <View style={styles.fieldGroup}>
           <Text style={styles.label}>E-mail</Text>
           <TextInput
             style={styles.input}
-            placeholder="Введите e-mail"
+            placeholder="example@mail.com"
             placeholderTextColor="#9ca6b5"
-            autoCapitalize="none"
             keyboardType="email-address"
+            autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
           />
         </View>
 
-        <View style={styles.field}>
+        <View style={styles.fieldGroup}>
           <Text style={styles.label}>Пароль</Text>
           <TextInput
             style={styles.input}
@@ -104,16 +91,17 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Войти как сотрудник</Text>
+          <Text style={styles.switchLabel}>Я сотрудник медорганизации</Text>
           <Switch
             value={isStaffSwitch}
             onValueChange={setIsStaffSwitch}
+            trackColor={{ false: "#d0d7e5", true: "#86c5ff" }}
             thumbColor={isStaffSwitch ? "#3390ec" : "#f4f3f4"}
           />
         </View>
 
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
           onPress={handleLogin}
           disabled={isSubmitting}
         >
@@ -157,48 +145,58 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
     justifyContent: "center",
-    gap: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: "700",
-    textAlign: "center",
     marginBottom: 8,
-    color: "#000",
+    textAlign: "center",
+    color: "#1f2937",
   },
-  field: {
-    gap: 6,
+  subtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  fieldGroup: {
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
-    color: "#4a4a4a",
+    color: "#4b5563",
+    marginBottom: 4,
   },
   input: {
+    backgroundColor: "#f3f4f6",
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#d0d7e6",
-    backgroundColor: "#f5f7fb",
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
   },
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 16,
   },
   switchLabel: {
     fontSize: 14,
-    color: "#4a4a4a",
-    flexShrink: 1,
-    paddingRight: 8,
+    color: "#374151",
+    flex: 1,
+    marginRight: 8,
   },
   primaryButton: {
-    borderRadius: 999,
     backgroundColor: "#3390ec",
+    borderRadius: 14,
     paddingVertical: 12,
     alignItems: "center",
-    justifyContent: "center",
+    marginTop: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: "#ffffff",

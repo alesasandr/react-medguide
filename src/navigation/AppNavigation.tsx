@@ -1,6 +1,5 @@
 // src/navigation/AppNavigation.tsx
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 // экраны
@@ -26,59 +25,57 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const AppNavigation = () => {
+const AppNavigation: React.FC = () => {
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
+    <Stack.Navigator initialRouteName="Login">
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ headerShown: false }}
+      />
 
-        <Stack.Screen
-          name="Register"
-          component={RegisterScreen}
-          options={{ title: "Регистрация" }}
-        />
+      <Stack.Screen
+        name="Register"
+        component={RegisterScreen}
+        options={{ title: "Регистрация" }}
+      />
 
-        <Stack.Screen
-          name="ResetPassword"
-          component={ResetPasswordScreen}
-          options={{ title: "Восстановить пароль" }}
-        />
+      <Stack.Screen
+        name="ResetPassword"
+        component={ResetPasswordScreen}
+        options={{ title: "Восстановить пароль" }}
+      />
 
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: "Главная" }}
-        />
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ title: "Главная" }}
+      />
 
-        <Stack.Screen
-          name="Profile"
-          component={ProfileScreen}
-          options={{ title: "Профиль" }}
-        />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ title: "Профиль" }}
+      />
 
-        <Stack.Screen
-          name="InstructionsList"
-          component={InstructionsListScreen}
-          options={{ title: "Инструкции" }}
-        />
+      <Stack.Screen
+        name="InstructionsList"
+        component={InstructionsListScreen}
+        options={{ title: "Инструкции" }}
+      />
 
-        <Stack.Screen
-          name="InstructionDetails"
-          component={InstructionDetailsScreen}
-          options={{ title: "Инструкция" }}
-        />
+      <Stack.Screen
+        name="InstructionDetails"
+        component={InstructionDetailsScreen}
+        options={{ title: "Инструкция" }}
+      />
 
-        <Stack.Screen
-          name="Chat"
-          component={ChatScreen}
-          options={{ title: "Чат" }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+      <Stack.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{ title: "Чат" }}
+      />
+    </Stack.Navigator>
   );
 };
 

@@ -8,9 +8,8 @@ import axios from 'axios'
  *   (удобно для запуска через Expo Web в браузере)
  */
 const devBaseUrl =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api'
+  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8081/'  // <-- тут проблема
 
-// Просто чтобы видеть, какой URL реально используется
 if (__DEV__) {
   console.log('API base URL:', devBaseUrl)
 }

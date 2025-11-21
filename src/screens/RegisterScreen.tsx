@@ -12,17 +12,16 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
+import { registerUser } from "../services/authService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Register">;
-
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
-  const [isStaffSwitch, setIsStaffSwitch] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRegister = async () => {
@@ -44,47 +43,28 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/auth/register/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            full_name: fullName.trim(),
-            email: email.trim(),
-            password: password.trim(),
-            is_staff: isStaffSwitch,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.log("Register error:", errText);
-        Alert.alert("Ошибка", "Не удалось создать аккаунт");
-        return;
-      }
-
-      const data = await response.json();
-      const user = data.user ?? {};
-      const name = user.full_name || user.email || fullName.trim();
-
-      const isStaff =
-        typeof user.is_staff === "boolean" ? user.is_staff : isStaffSwitch;
-
-      await saveUserProfile({
-        name,
+      const user = await registerUser({
+        email: email.trim(),
+        password: password.trim(),
+        fullName: fullName.trim(),
         isStaff,
-        avatarUri: user.avatar_url ?? null,
       });
 
-      Alert.alert("Готово", "Аккаунт создан, вход выполнен");
+      await saveUserProfile({
+        name: user.full_name || user.email,
+        isStaff: user.is_staff,
+        avatarUri: null,
+      });
+
+      Alert.alert("Готово", "Аккаунт создан локально");
       navigation.replace("Home");
-    } catch (e) {
-      console.log("Network register error:", e);
-      Alert.alert("Ошибка", "Сетевая ошибка при регистрации");
+    } catch (e: any) {
+      console.log("Register error:", e);
+      if (e?.code === "EMAIL_EXISTS") {
+        Alert.alert("Ошибка", "Пользователь с таким e-mail уже существует");
+      } else {
+        Alert.alert("Ошибка", "Не удалось создать аккаунт");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -146,14 +126,17 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>Я сотрудник медорганизации</Text>
           <Switch
-            value={isStaffSwitch}
-            onValueChange={setIsStaffSwitch}
-            thumbColor={isStaffSwitch ? "#3390ec" : "#f4f3f4"}
+            value={isStaff}
+            onValueChange={setIsStaff}
+            thumbColor={isStaff ? "#3390ec" : "#f4f3f4"}
           />
         </View>
 
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[
+            styles.primaryButton,
+            isSubmitting && styles.buttonDisabled,
+          ]}
           onPress={handleRegister}
           disabled={isSubmitting}
         >
@@ -232,6 +215,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: "#ffffff",

@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Switch,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -19,7 +18,6 @@ type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isStaffSwitch, setIsStaffSwitch] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
@@ -38,7 +36,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
       await saveUserProfile({
         name: user.full_name || user.email,
-        isStaff: user.is_staff ?? isStaffSwitch,
+        isStaff: user.is_staff ?? false,
         avatarUri: null,
       });
 
@@ -75,6 +73,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
+            underlineColorAndroid="transparent"
           />
         </View>
 
@@ -87,16 +86,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             secureTextEntry
             value={password}
             onChangeText={setPassword}
-          />
-        </View>
-
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Я сотрудник медорганизации</Text>
-          <Switch
-            value={isStaffSwitch}
-            onValueChange={setIsStaffSwitch}
-            trackColor={{ false: "#d0d7e5", true: "#86c5ff" }}
-            thumbColor={isStaffSwitch ? "#3390ec" : "#f4f3f4"}
+            underlineColorAndroid="transparent"
           />
         </View>
 
@@ -112,7 +102,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.replace("Register")}
+          // navigate (НЕ replace) — чтобы появилась нормальная стрелка назад
+          onPress={() => navigation.navigate("Register")}
         >
           <Text style={styles.linkText}>Создать аккаунт</Text>
         </TouchableOpacity>
@@ -173,20 +164,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  switchLabel: {
-    fontSize: 14,
-    color: "#374151",
-    flex: 1,
-    marginRight: 8,
+    borderWidth: 0,
+    borderColor: "transparent", // убираем обводку
   },
   primaryButton: {
     backgroundColor: "#3390ec",

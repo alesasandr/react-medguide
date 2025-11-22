@@ -11,6 +11,8 @@ import ProfileScreen from "../screens/ProfileScreen";
 import InstructionsListScreen from "../screens/InstructionsListScreen";
 import InstructionDetailsScreen from "../screens/InstructionDetailsScreen";
 import ChatScreen from "../screens/ChatScreen";
+import MedicinesListScreen from "../screens/MedicinesListScreen";
+import MedicineDetailsScreen from "../screens/MedicineDetailsScreen";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -21,6 +23,8 @@ export type RootStackParamList = {
   InstructionsList: undefined;
   InstructionDetails: { id: number };
   Chat: undefined;
+  MedicinesList: undefined;
+  MedicineDetails: { id: number };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -37,7 +41,10 @@ const AppNavigation: React.FC = () => {
       <Stack.Screen
         name="Register"
         component={RegisterScreen}
-        options={{ title: "Регистрация" }}
+        options={{
+          title: "Регистрация",
+          headerBackTitle: "Назад",
+        }}
       />
 
       <Stack.Screen
@@ -74,6 +81,18 @@ const AppNavigation: React.FC = () => {
         name="Chat"
         component={ChatScreen}
         options={{ title: "Чат" }}
+      />
+
+      <Stack.Screen
+        name="MedicinesList"
+        component={MedicinesListScreen}
+        options={{ title: "Препараты" }}
+      />
+
+      <Stack.Screen
+        name="MedicineDetails"
+        component={MedicineDetailsScreen}
+        options={{ title: "Препарат" }}
       />
     </Stack.Navigator>
   );

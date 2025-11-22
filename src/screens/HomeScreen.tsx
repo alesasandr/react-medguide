@@ -24,31 +24,17 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     ? `Добро пожаловать, ${profile.name}!`
     : "Добро пожаловать!";
 
-  const roleText = profile
-    ? profile.isStaff
-      ? "Режим сотрудника медорганизации: доступ ко всем инструкциям и чатам."
-      : "Режим пациента: доступ к инструкциям и чату с врачом."
-    : "Вы не авторизованы";
-
   return (
     <View style={styles.root}>
       <View style={styles.card}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{roleText}</Text>
 
         <View style={styles.buttons}>
           <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate("InstructionsList")}
+            style={styles.primaryButton}
+            onPress={() => navigation.navigate("MedicinesList")}
           >
-            <Text style={styles.buttonText}>Инструкции</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate("Chat")}
-          >
-            <Text style={styles.buttonText}>Чат</Text>
+            <Text style={styles.primaryButtonText}>Препараты</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -80,28 +66,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
     justifyContent: "center",
-    gap: 16,
+    gap: 24,
   },
   title: {
     fontSize: 24,
     fontWeight: "700",
     color: "#000",
   },
-  subtitle: {
-    fontSize: 16,
-    color: "#4a4a4a",
-  },
   buttons: {
     marginTop: 24,
     gap: 12,
   },
-  button: {
+  primaryButton: {
     borderRadius: 999,
     backgroundColor: "#3390ec",
     paddingVertical: 12,
     alignItems: "center",
   },
-  buttonText: {
+  primaryButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",

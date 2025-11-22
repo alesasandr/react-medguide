@@ -1,245 +1,353 @@
 // src/screens/ProfileScreen.tsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
+  Image,
   Alert,
-  Image
-} from 'react-native'
-import { useNavigation } from '@react-navigation/native'
+  TouchableWithoutFeedback,
+  Keyboard,
+  ActivityIndicator,
+} from "react-native";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/AppNavigation";
 import {
   loadUserProfile,
-  clearUserProfile,
-  type UserProfile
-} from '../storage/userStorage'
+  saveUserProfile,
+  UserProfile,
+} from "../storage/userStorage";
+import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const ProfileScreen: React.FC = () => {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const navigation = useNavigation<any>()
+type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
+
+const ProfileScreen: React.FC<Props> = ({ navigation }) => {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [name, setName] = useState("");
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const storedProfile = await loadUserProfile()
-      setProfile(storedProfile)
+      try {
+        const storedProfile = await loadUserProfile();
+        if (storedProfile) {
+          setProfile(storedProfile);
+          setName(storedProfile.name || "");
+          setAvatarUri(storedProfile.avatarUri || null);
+        }
+      } catch (e) {
+        console.log("Load profile error:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const handlePickAvatar = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Нет доступа",
+          "Разрешите доступ к фото, чтобы выбрать аватар."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        // обновляем только локально; финальное сохранение — через кнопку "Сохранить"
+        setAvatarUri(uri);
+      }
+    } catch (e) {
+      console.log("Image pick error:", e);
+      Alert.alert("Ошибка", "Не удалось выбрать изображение");
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    try {
+      // убираем из UI
+      setAvatarUri(null);
+
+      // и сразу сохраняем в "бд" (userStorage)
+      if (profile) {
+        const updated: UserProfile = {
+          ...profile,
+          avatarUri: null,
+        };
+        await saveUserProfile(updated);
+        setProfile(updated);
+      }
+
+      Alert.alert("Готово", "Фото профиля удалено");
+    } catch (e) {
+      console.log("Delete avatar error:", e);
+      Alert.alert("Ошибка", "Не удалось удалить фото");
+    }
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      Alert.alert("Ошибка", "Введите имя");
+      return;
     }
 
-    load()
-  }, [])
+    try {
+      setIsSaving(true);
+
+      const current = profile;
+      const newProfile: UserProfile = {
+        name: name.trim(),
+        isStaff: current?.isStaff ?? false,
+        // здесь как раз и сохраняем avatarUri в нашей "базе"
+        avatarUri: avatarUri ?? null,
+      };
+
+      await saveUserProfile(newProfile);
+      setProfile(newProfile);
+      Alert.alert("Готово", "Профиль обновлён");
+    } catch (e) {
+      console.log("Save profile error:", e);
+      Alert.alert("Ошибка", "Не удалось сохранить профиль");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
-      setIsLoggingOut(true)
-      await clearUserProfile()
-      setProfile(null)
-      navigation.replace('Login')
+      // при желании можешь заменить на точечное удаление только профиля
+      await AsyncStorage.clear();
+      setProfile(null);
+      setName("");
+      setAvatarUri(null);
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Login" }],
+      });
     } catch (e) {
-      Alert.alert(
-        'Ошибка',
-        'Не удалось выйти из аккаунта. Попробуйте ещё раз.'
-      )
-    } finally {
-      setIsLoggingOut(false)
+      console.log("Logout error:", e);
+      Alert.alert("Ошибка", "Не удалось выйти из аккаунта");
     }
-  }
+  };
 
-  if (!profile) {
+  if (isLoading) {
     return (
-      <View style={styles.root}>
-        <View style={styles.cardCenter}>
-          <Text style={styles.title}>Личный кабинет</Text>
-          <Text style={styles.text}>
-            Профиль пользователя не найден. Выполните вход в приложение.
-          </Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.replace('Login')}
-          >
-            <Text style={styles.primaryButtonText}>Перейти к входу</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.loadingRoot}>
+        <ActivityIndicator size="large" />
       </View>
-    )
+    );
   }
-
-  const avatarLetter = (profile.name[0] || 'П').toUpperCase()
-  const roleText = profile.isStaff
-    ? 'Сотрудник медорганизации'
-    : 'Пациент'
 
   return (
-    <View style={styles.root}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Личный кабинет</Text>
-
-        <View style={styles.profileRow}>
-          <View style={styles.avatar}>
-            {profile.avatarUri ? (
-              <Image
-                source={{ uri: profile.avatarUri }}
-                style={styles.avatarImage}
-              />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.root}>
+        <View style={styles.card}>
+          {/* Аватарка */}
+          <View style={styles.avatarWrapper}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatar} />
             ) : (
-              <Text style={styles.avatarText}>{avatarLetter}</Text>
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarPlaceholderText}>
+                  {name.trim()
+                    ? name.trim().charAt(0).toUpperCase()
+                    : "?"}
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.avatarButton}
+              onPress={handlePickAvatar}
+            >
+              <Text style={styles.avatarButtonText}>Изменить фото</Text>
+            </TouchableOpacity>
+
+            {avatarUri && (
+              <TouchableOpacity
+                style={styles.avatarDeleteButton}
+                onPress={handleDeleteAvatar}
+              >
+                <Text style={styles.avatarDeleteButtonText}>
+                  Удалить фото
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
 
-          <View style={styles.profileInfo}>
-            <Text style={styles.name}>{profile.name}</Text>
-            <View style={styles.roleTag}>
-              <Text style={styles.roleTagText}>{roleText}</Text>
-            </View>
+          {/* Редактирование имени */}
+          <View style={styles.field}>
+            <Text style={styles.label}>Ваше имя</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Введите имя"
+              placeholderTextColor="#9ca6b5"
+              value={name}
+              onChangeText={setName}
+              underlineColorAndroid="transparent"
+              returnKeyType="done"
+            />
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>О профиле</Text>
-          <Text style={styles.text}>
-            В дальнейшем здесь появятся настройки профиля и доступ к
-            редактированию инструкций (для сотрудников).
-          </Text>
-        </View>
+          {/* Кнопка сохранить */}
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={isSaving}
+          >
+            <Text style={styles.saveButtonText}>
+              {isSaving ? "Сохраняем..." : "Сохранить"}
+            </Text>
+          </TouchableOpacity>
 
-        <View style={styles.logoutSection}>
+          {/* Кнопка выхода из аккаунта */}
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={handleLogout}
-            disabled={isLoggingOut}
           >
-            <Text style={styles.logoutText}>
-              {isLoggingOut ? 'Выходим...' : 'Выйти из аккаунта'}
-            </Text>
+            <Text style={styles.logoutButtonText}>Выйти из аккаунта</Text>
           </TouchableOpacity>
         </View>
       </View>
-    </View>
-  )
-}
+    </TouchableWithoutFeedback>
+  );
+};
 
 const styles = StyleSheet.create({
+  loadingRoot: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#e9edf5",
+  },
   root: {
     flex: 1,
-    backgroundColor: '#e9edf5',
-    padding: 16
+    backgroundColor: "#e9edf5",
+    padding: 16,
   },
   card: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
-    gap: 20
+    gap: 20,
   },
-  cardCenter: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    textAlign: 'center',
-    color: '#000'
-  },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12
+  avatarWrapper: {
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 8,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#d2e6ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
+    width: 96,
+    height: 96,
+    borderRadius: 48,
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%'
+  avatarPlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#e5e7eb",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  avatarText: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#2b5278'
+  avatarPlaceholderText: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#4b5563",
   },
-  profileInfo: {
-    flex: 1,
-    gap: 6
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000'
-  },
-  roleTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  avatarButton: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(51,144,236,0.08)'
+    borderWidth: 1,
+    borderColor: "#3390ec",
   },
-  roleTagText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#3390ec'
-  },
-  section: {
-    gap: 6
-  },
-  sectionTitle: {
+  avatarButtonText: {
+    color: "#3390ec",
     fontSize: 14,
-    fontWeight: '600',
-    color: '#4a4a4a'
+    fontWeight: "500",
   },
-  text: {
+  avatarDeleteButton: {
+    marginTop: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#ef4444",
+  },
+  avatarDeleteButtonText: {
+    color: "#ffffff",
     fontSize: 14,
-    color: '#4a4a4a',
-    textAlign: 'left'
+    fontWeight: "500",
   },
-  logoutSection: {
-    marginTop: 'auto',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 12
+  field: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 14,
+    color: "#4a4a4a",
+  },
+  input: {
+    borderRadius: 12,
+    backgroundColor: "#f5f7fb",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    borderWidth: 0,
+    borderColor: "transparent",
+  },
+  saveButton: {
+    marginTop: 8,
+    borderRadius: 999,
+    backgroundColor: "#3390ec",
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
+  },
+  saveButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   logoutButton: {
-    paddingVertical: 10,
-    alignItems: 'center'
-  },
-  logoutText: {
-    fontSize: 14,
-    color: '#e53935',
-    fontWeight: '500'
-  },
-  primaryButton: {
-    marginTop: 12,
+    marginTop: 8,
     borderRadius: 999,
-    backgroundColor: '#3390ec',
-    paddingVertical: 10,
-    paddingHorizontal: 24
+    backgroundColor: "#ef4444",
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600'
-  }
-})
+  logoutButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});
 
-export default ProfileScreen
+export default ProfileScreen;

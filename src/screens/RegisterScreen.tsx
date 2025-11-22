@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Switch,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -21,7 +20,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
-  const [isStaff, setIsStaff] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRegister = async () => {
@@ -47,7 +45,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         email: email.trim(),
         password: password.trim(),
         fullName: fullName.trim(),
-        isStaff,
+        isStaff: false,
       });
 
       await saveUserProfile({
@@ -72,6 +70,11 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const handleBackToLogin = () => {
+    // текстовая кнопка "У меня уже есть аккаунт"
+    navigation.goBack();
+  };
+
   return (
     <View style={styles.root}>
       <View style={styles.card}>
@@ -85,6 +88,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             placeholderTextColor="#9ca6b5"
             value={fullName}
             onChangeText={setFullName}
+            underlineColorAndroid="transparent"
           />
         </View>
 
@@ -98,6 +102,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             keyboardType="email-address"
             value={email}
             onChangeText={setEmail}
+            underlineColorAndroid="transparent"
           />
         </View>
 
@@ -110,6 +115,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             secureTextEntry
             value={password}
             onChangeText={setPassword}
+            underlineColorAndroid="transparent"
           />
         </View>
 
@@ -122,23 +128,12 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             secureTextEntry
             value={password2}
             onChangeText={setPassword2}
-          />
-        </View>
-
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Я сотрудник медорганизации</Text>
-          <Switch
-            value={isStaff}
-            onValueChange={setIsStaff}
-            thumbColor={isStaff ? "#3390ec" : "#f4f3f4"}
+            underlineColorAndroid="transparent"
           />
         </View>
 
         <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            isSubmitting && styles.buttonDisabled,
-          ]}
+          style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
           onPress={handleRegister}
           disabled={isSubmitting}
         >
@@ -149,7 +144,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.replace("Login")}
+          onPress={handleBackToLogin}
         >
           <Text style={styles.linkText}>У меня уже есть аккаунт</Text>
         </TouchableOpacity>
@@ -193,23 +188,12 @@ const styles = StyleSheet.create({
   },
   input: {
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#d0d7e6",
     backgroundColor: "#f5f7fb",
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
-  },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  switchLabel: {
-    fontSize: 14,
-    color: "#4a4a4a",
-    flexShrink: 1,
-    paddingRight: 8,
+    borderWidth: 0,
+    borderColor: "transparent", // убираем обводку
   },
   primaryButton: {
     borderRadius: 999,

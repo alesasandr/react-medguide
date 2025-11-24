@@ -32,6 +32,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           Быстрый доступ к информации о препаратах и управлению профилем.
         </Text>
 
+        {/* Блок основных действий */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Основные действия</Text>
 
@@ -39,7 +40,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.primaryButton}
             onPress={() => navigation.navigate("MedicinesList")}
           >
-            <Text style={styles.primaryButtonText}>Открыть список препаратов</Text>
+            <Text style={styles.primaryButtonText}>
+              Открыть список препаратов
+            </Text>
             <Text style={styles.primaryButtonSubText}>
               Просмотр доступных препаратов и деталей по каждому.
             </Text>
@@ -53,18 +56,32 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
+        {/* Блок поиска: по коду + сканирование */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Поиск</Text>
 
+          {/* Поиск по коду (остался как в прошлой ЛР) */}
           <TouchableOpacity
             style={styles.accentButton}
             onPress={() => navigation.navigate("MedicineCodeSearch")}
           >
+            <Text style={styles.accentButtonTitle}>Найти препарат по коду</Text>
+            <Text style={styles.accentButtonText}>
+              Введите уникальный код (ID) препарата вручную.
+            </Text>
+          </TouchableOpacity>
+
+          {/* Новый вариант — сканирование QR-кода */}
+          <TouchableOpacity
+            style={styles.accentButton}
+            onPress={() => navigation.navigate("ScanMedicine")}
+          >
             <Text style={styles.accentButtonTitle}>
-              Найти препарат по уникальному коду
+              Сканировать QR-код препарата
             </Text>
             <Text style={styles.accentButtonText}>
-              Введите код (ID) препарата, чтобы сразу перейти к нужному лекарству.
+              Откройте камеру и отсканируйте QR-код на упаковке, чтобы найти
+              нужный препарат.
             </Text>
           </TouchableOpacity>
         </View>
@@ -129,12 +146,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#3390ec",
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: "center",
   },
   secondaryButtonText: {
     color: "#3390ec",
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600",
   },
   accentButton: {

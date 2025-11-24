@@ -1,6 +1,6 @@
 // src/screens/MedicineDetailsScreen.tsx
-import React, { useMemo } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useMemo, useEffect, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { medicines } from "../db/medicines";
@@ -10,12 +10,23 @@ type Props = NativeStackScreenProps<RootStackParamList, "MedicineDetails">;
 const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
   const { id } = route.params;
 
-  const medicine = useMemo(
+  const baseMedicine = useMemo(
     () => medicines.find((m) => m.id === id),
     [id]
   );
 
-  if (!medicine) {
+  const [stock, setStock] = useState(baseMedicine?.stock ?? 0);
+  const [stockPerPack] = useState(baseMedicine?.stockPerPack ?? 0);
+  const [diff, setDiff] = useState(baseMedicine?.diff ?? 0);
+
+  useEffect(() => {
+    if (baseMedicine) {
+      setStock(baseMedicine.stock);
+      setDiff(baseMedicine.diff);
+    }
+  }, [baseMedicine]);
+
+  if (!baseMedicine) {
     return (
       <View style={styles.root}>
         <Text style={styles.errorText}>Препарат не найден.</Text>
@@ -24,11 +35,29 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
   }
 
   const isLowStock =
-    typeof medicine.diff === "number" ? medicine.diff < 0 : false;
+    typeof diff === "number" ? diff > 0 && baseMedicine.minStock > stock : false;
+
+  const handleTake = () => {
+    if (stock <= 0) {
+      Alert.alert("Нет остатков", "Нельзя взять препарат, остаток равен нулю.");
+      return;
+    }
+
+    const newStock = stock - 1;
+    const newDiff = baseMedicine.minStock - newStock;
+
+    setStock(newStock);
+    setDiff(newDiff);
+
+    Alert.alert(
+      "Препарат выдан",
+      "Одна упаковка препарата выдана пациенту (локальное обновление остатка)."
+    );
+  };
 
   return (
     <View style={styles.root}>
-      <Text style={styles.title}>{medicine.name}</Text>
+      <Text style={styles.title}>{baseMedicine.name}</Text>
 
       {isLowStock && (
         <View style={styles.warningBox}>
@@ -42,41 +71,45 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
 
       <View style={styles.block}>
         <Text style={styles.label}>МНН</Text>
-        <Text style={styles.value}>{medicine.mnn}</Text>
+        <Text style={styles.value}>{baseMedicine.mnn}</Text>
       </View>
 
       <View style={styles.blockRow}>
         <View style={styles.blockHalf}>
           <Text style={styles.label}>Форма</Text>
-          <Text style={styles.value}>{medicine.form}</Text>
+          <Text style={styles.value}>{baseMedicine.form}</Text>
         </View>
         <View style={styles.blockHalf}>
           <Text style={styles.label}>Дозировка</Text>
-          <Text style={styles.value}>{medicine.dosage}</Text>
+          <Text style={styles.value}>{baseMedicine.dosage}</Text>
         </View>
       </View>
 
       <View style={styles.blockRow}>
         <View style={styles.blockHalf}>
           <Text style={styles.label}>Неснижаемый остаток</Text>
-          <Text style={styles.value}>{medicine.minStock}</Text>
+          <Text style={styles.value}>{baseMedicine.minStock}</Text>
         </View>
         <View style={styles.blockHalf}>
-          <Text style={styles.label}>Остаток, упак.</Text>
-          <Text style={styles.value}>{medicine.stock}</Text>
+          <Text style={styles.label}>Остаток (упаковок)</Text>
+          <Text style={styles.value}>{stock}</Text>
         </View>
       </View>
 
       <View style={styles.blockRow}>
         <View style={styles.blockHalf}>
           <Text style={styles.label}>Остаток, ед. фасовки</Text>
-          <Text style={styles.value}>{medicine.stockPerPack}</Text>
+          <Text style={styles.value}>{stockPerPack}</Text>
         </View>
         <View style={styles.blockHalf}>
           <Text style={styles.label}>Разница</Text>
-          <Text style={styles.value}>{medicine.diff}</Text>
+          <Text style={styles.value}>{diff}</Text>
         </View>
       </View>
+
+      <TouchableOpacity style={styles.takeButton} onPress={handleTake}>
+        <Text style={styles.takeButtonText}>Взять препарат</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -140,6 +173,18 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: "#b91c1c",
+  },
+  takeButton: {
+    marginTop: 16,
+    borderRadius: 999,
+    backgroundColor: "#2563eb",
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  takeButtonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
 

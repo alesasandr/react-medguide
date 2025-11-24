@@ -7,6 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -56,66 +58,68 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.root}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Добро пожаловать</Text>
-        <Text style={styles.subtitle}>
-          Войдите в личный кабинет, чтобы продолжить
-        </Text>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>E-mail</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="example@mail.com"
-            placeholderTextColor="#9ca6b5"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-            underlineColorAndroid="transparent"
-          />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Пароль</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Введите пароль"
-            placeholderTextColor="#9ca6b5"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            underlineColorAndroid="transparent"
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isSubmitting ? "Входим..." : "Войти"}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.root}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Добро пожаловать</Text>
+          <Text style={styles.subtitle}>
+            Войдите в личный кабинет, чтобы продолжить
           </Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.linkButton}
-          // navigate (НЕ replace) — чтобы появилась нормальная стрелка назад
-          onPress={() => navigation.navigate("Register")}
-        >
-          <Text style={styles.linkText}>Создать аккаунт</Text>
-        </TouchableOpacity>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>E-mail</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="example@mail.com"
+              placeholderTextColor="#9ca6b5"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+              underlineColorAndroid="transparent"
+            />
+          </View>
 
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate("ResetPassword")}
-        >
-          <Text style={styles.linkText}>Забыли пароль?</Text>
-        </TouchableOpacity>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Пароль</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Введите пароль"
+              placeholderTextColor="#9ca6b5"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isSubmitting ? "Входим..." : "Войти"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            // navigate (НЕ replace) — чтобы появилась нормальная стрелка назад
+            onPress={() => navigation.navigate("Register")}
+          >
+            <Text style={styles.linkText}>Создать аккаунт</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => navigation.navigate("ResetPassword")}
+          >
+            <Text style={styles.linkText}>Забыли пароль?</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 

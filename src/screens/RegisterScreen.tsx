@@ -7,6 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -76,80 +78,82 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.root}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Регистрация</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.root}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Регистрация</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>ФИО / имя</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Введите имя"
-            placeholderTextColor="#9ca6b5"
-            value={fullName}
-            onChangeText={setFullName}
-            underlineColorAndroid="transparent"
-          />
+          <View style={styles.field}>
+            <Text style={styles.label}>ФИО / имя</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Введите имя"
+              placeholderTextColor="#9ca6b5"
+              value={fullName}
+              onChangeText={setFullName}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>E-mail</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Введите e-mail"
+              placeholderTextColor="#9ca6b5"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Пароль</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Придумайте пароль"
+              placeholderTextColor="#9ca6b5"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Повторите пароль</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Повторите пароль"
+              placeholderTextColor="#9ca6b5"
+              secureTextEntry
+              value={password2}
+              onChangeText={setPassword2}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
+            onPress={handleRegister}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isSubmitting ? "Создаём..." : "Зарегистрироваться"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleBackToLogin}
+          >
+            <Text style={styles.linkText}>У меня уже есть аккаунт</Text>
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>E-mail</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Введите e-mail"
-            placeholderTextColor="#9ca6b5"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-            underlineColorAndroid="transparent"
-          />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Пароль</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Придумайте пароль"
-            placeholderTextColor="#9ca6b5"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            underlineColorAndroid="transparent"
-          />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Повторите пароль</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Повторите пароль"
-            placeholderTextColor="#9ca6b5"
-            secureTextEntry
-            value={password2}
-            onChangeText={setPassword2}
-            underlineColorAndroid="transparent"
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isSubmitting ? "Создаём..." : "Зарегистрироваться"}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={handleBackToLogin}
-        >
-          <Text style={styles.linkText}>У меня уже есть аккаунт</Text>
-        </TouchableOpacity>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 

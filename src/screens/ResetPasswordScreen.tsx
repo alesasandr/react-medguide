@@ -7,6 +7,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -57,34 +59,36 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.root}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Восстановление пароля</Text>
-        <Text style={styles.text}>
-          Введите e-mail, который вы использовали при регистрации.
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor="#9ca6b5"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-
-        <TouchableOpacity
-          style={[styles.button, isSubmitting && styles.buttonDisabled]}
-          onPress={handleReset}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.buttonText}>
-            {isSubmitting ? "Отправляем..." : "Отправить ссылку"}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.root}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Восстановление пароля</Text>
+          <Text style={styles.text}>
+            Введите e-mail, который вы использовали при регистрации.
           </Text>
-        </TouchableOpacity>
+
+          <TextInput
+            style={styles.input}
+            placeholder="E-mail"
+            placeholderTextColor="#9ca6b5"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+
+          <TouchableOpacity
+            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            onPress={handleReset}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.buttonText}>
+              {isSubmitting ? "Отправляем..." : "Отправить ссылку"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 

@@ -23,43 +23,59 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
     );
   }
 
+  const isLowStock =
+    typeof medicine.diff === "number" ? medicine.diff < 0 : false;
+
   return (
     <View style={styles.root}>
       <Text style={styles.title}>{medicine.name}</Text>
+
+      {isLowStock && (
+        <View style={styles.warningBox}>
+          <Text style={styles.warningTitle}>Внимание</Text>
+          <Text style={styles.warningText}>
+            Остаток препарата ниже неснижаемого уровня. Требуется пополнение
+            запаса.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.block}>
         <Text style={styles.label}>МНН</Text>
         <Text style={styles.value}>{medicine.mnn}</Text>
       </View>
 
-      <View style={styles.block}>
-        <Text style={styles.label}>Форма</Text>
-        <Text style={styles.value}>{medicine.form}</Text>
+      <View style={styles.blockRow}>
+        <View style={styles.blockHalf}>
+          <Text style={styles.label}>Форма</Text>
+          <Text style={styles.value}>{medicine.form}</Text>
+        </View>
+        <View style={styles.blockHalf}>
+          <Text style={styles.label}>Дозировка</Text>
+          <Text style={styles.value}>{medicine.dosage}</Text>
+        </View>
       </View>
 
-      <View style={styles.block}>
-        <Text style={styles.label}>Дозировка</Text>
-        <Text style={styles.value}>{medicine.dosage}</Text>
+      <View style={styles.blockRow}>
+        <View style={styles.blockHalf}>
+          <Text style={styles.label}>Неснижаемый остаток</Text>
+          <Text style={styles.value}>{medicine.minStock}</Text>
+        </View>
+        <View style={styles.blockHalf}>
+          <Text style={styles.label}>Остаток, упак.</Text>
+          <Text style={styles.value}>{medicine.stock}</Text>
+        </View>
       </View>
 
-      <View style={styles.block}>
-        <Text style={styles.label}>Неснижаемый остаток</Text>
-        <Text style={styles.value}>{medicine.minStock}</Text>
-      </View>
-
-      <View style={styles.block}>
-        <Text style={styles.label}>Остаток (кол-во упаковок)</Text>
-        <Text style={styles.value}>{medicine.stock}</Text>
-      </View>
-
-      <View style={styles.block}>
-        <Text style={styles.label}>Остаток, ед. фасовки</Text>
-        <Text style={styles.value}>{medicine.stockPerPack}</Text>
-      </View>
-
-      <View style={styles.block}>
-        <Text style={styles.label}>Разница</Text>
-        <Text style={styles.value}>{medicine.diff}</Text>
+      <View style={styles.blockRow}>
+        <View style={styles.blockHalf}>
+          <Text style={styles.label}>Остаток, ед. фасовки</Text>
+          <Text style={styles.value}>{medicine.stockPerPack}</Text>
+        </View>
+        <View style={styles.blockHalf}>
+          <Text style={styles.label}>Разница</Text>
+          <Text style={styles.value}>{medicine.diff}</Text>
+        </View>
       </View>
     </View>
   );
@@ -77,8 +93,37 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#111827",
   },
-  block: {
+  warningBox: {
+    backgroundColor: "#fef2f2",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#fecaca",
     marginBottom: 12,
+  },
+  warningTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#b91c1c",
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 12,
+    color: "#b91c1c",
+  },
+  block: {
+    marginBottom: 10,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 10,
+  },
+  blockRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+  blockHalf: {
+    flex: 1,
     backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 10,

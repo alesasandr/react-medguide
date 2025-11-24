@@ -27,22 +27,42 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
     );
   }, [query]);
 
-  const renderItem = ({ item }: { item: Medicine }) => (
-    <TouchableOpacity
-      style={styles.item}
-      onPress={() => navigation.navigate("MedicineDetails", { id: item.id })}
-    >
-      <Text style={styles.itemName}>{item.name}</Text>
-      <Text style={styles.itemSub}>
-        {item.form} • {item.dosage}
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }: { item: Medicine }) => {
+    const isLowStock =
+      typeof item.diff === "number" ? item.diff < 0 : false;
+
+    return (
+      <TouchableOpacity
+        style={[styles.item, isLowStock && styles.itemLow]}
+        onPress={() => navigation.navigate("MedicineDetails", { id: item.id })}
+      >
+        <View style={styles.itemHeaderRow}>
+          <Text style={styles.itemName}>{item.name}</Text>
+          <View style={styles.codeBadge}>
+            <Text style={styles.codeBadgeText}>Код: {item.id}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.itemSub}>
+          {item.form} • {item.dosage}
+        </Text>
+
+        {isLowStock && (
+          <Text style={styles.lowStockText}>
+            Внимание: остаток ниже неснижаемого!
+          </Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.root}>
         <Text style={styles.title}>Доступные препараты</Text>
+        <Text style={styles.subtitle}>
+          Используйте поиск, чтобы быстро найти препарат по названию или МНН.
+        </Text>
 
         <TextInput
           style={styles.searchInput}
@@ -61,7 +81,7 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.listContent}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false} // отключаем «плашку» прокрутки
+          showsVerticalScrollIndicator={false}
         />
       </View>
     </TouchableWithoutFeedback>
@@ -77,8 +97,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "700",
-    marginBottom: 12,
+    marginBottom: 4,
     color: "#111827",
+  },
+  subtitle: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginBottom: 12,
   },
   searchInput: {
     backgroundColor: "#ffffff",
@@ -102,15 +127,44 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
+  itemLow: {
+    borderWidth: 1,
+    borderColor: "#ef4444",
+  },
+  itemHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   itemName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",
+    flex: 1,
+    marginRight: 8,
   },
   itemSub: {
-    marginTop: 4,
     fontSize: 13,
     color: "#6b7280",
+    marginTop: 2,
+  },
+  lowStockText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#b91c1c",
+    fontWeight: "500",
+  },
+  codeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "#eff6ff",
+  },
+  codeBadgeText: {
+    fontSize: 11,
+    color: "#1d4ed8",
+    fontWeight: "500",
   },
 });
 

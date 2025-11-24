@@ -13,6 +13,7 @@ import InstructionDetailsScreen from "../screens/InstructionDetailsScreen";
 import ChatScreen from "../screens/ChatScreen";
 import MedicinesListScreen from "../screens/MedicinesListScreen";
 import MedicineDetailsScreen from "../screens/MedicineDetailsScreen";
+import MedicineCodeSearchScreen from "../screens/MedicineCodeSearchScreen";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -25,6 +26,7 @@ export type RootStackParamList = {
   Chat: undefined;
   MedicinesList: undefined;
   MedicineDetails: { id: number };
+  MedicineCodeSearch: undefined; // новый экран поиска по коду
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -93,6 +95,12 @@ const AppNavigation: React.FC = () => {
         name="MedicineDetails"
         component={MedicineDetailsScreen}
         options={{ title: "Препарат" }}
+      />
+
+      <Stack.Screen
+        name="MedicineCodeSearch"
+        component={MedicineCodeSearchScreen}
+        options={{ title: "Поиск по коду" }}
       />
     </Stack.Navigator>
   );

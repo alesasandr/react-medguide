@@ -1,6 +1,14 @@
 // src/screens/MedicineDetailsScreen.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+} from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -66,10 +74,12 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
       ? override.stock
       : medicine.stock;
 
-  const currentDiff =
+  const currentDiffRaw =
     override && typeof override.diff === "number"
       ? override.diff
-      : medicine.diff;
+      : medicine.minStock - currentStock;
+  const currentDiff = Math.max(currentDiffRaw, 0);
+  const isBelowMin = currentDiff > 0;
 
   const handleChangeIssue = (delta: 1 | -1) => {
     const maxIssue = currentStock;
@@ -162,105 +172,125 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
 
   return (
     <View style={styles.root}>
-      <View style={styles.card}>
-        <Text style={styles.title}>{medicine.name}</Text>
-        <Text style={styles.mnn}>МНН: {medicine.mnn}</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.card}>
+          <Text style={styles.title}>{medicine.name}</Text>
+          <Text style={styles.mnn}>МНН: {medicine.mnn}</Text>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Лекарственная форма</Text>
-          <Text style={styles.value}>{medicine.form}</Text>
-        </View>
-
-        <View style={styles.block}>
-          <Text style={styles.label}>Дозировка</Text>
-          <Text style={styles.value}>{medicine.dosage}</Text>
-        </View>
-
-        <View style={styles.blockRow}>
-          <View style={styles.blockColumn}>
-            <Text style={styles.label}>Минимальный остаток</Text>
-            <Text style={styles.value}>{medicine.minStock}</Text>
-          </View>
-          <View style={styles.blockColumn}>
-            <Text style={styles.label}>В упаковке</Text>
-            <Text style={styles.value}>{medicine.stockPerPack}</Text>
-          </View>
-        </View>
-
-        <View style={styles.blockRow}>
-          <View style={styles.blockColumn}>
-            <Text style={styles.label}>На складе сейчас</Text>
-            <Text style={styles.value}>{currentStock}</Text>
-          </View>
-          <View style={styles.blockColumn}>
-            <Text style={styles.label}>Отклонение</Text>
-            <Text
-              style={[
-                styles.value,
-                currentDiff < 0
-                  ? styles.valueNegative
-                  : currentDiff > 0
-                  ? styles.valuePositive
-                  : null,
-              ]}
-            >
-              {currentDiff}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.separator} />
-
-        <Text style={styles.sectionTitle}>Выдать препарат</Text>
-        <Text style={styles.sectionHint}>
-          Укажите количество единиц, которое нужно выдать. Изменения сохраняются
-          локально и будут учтены при следующем открытии приложения.
-        </Text>
-
-        <View style={styles.issueRow}>
-          <TouchableOpacity
-            style={[
-              styles.issueButtonSmall,
-              issueCount <= 0 && styles.issueButtonDisabled,
-            ]}
-            onPress={() => handleChangeIssue(-1)}
-            disabled={issueCount <= 0}
-          >
-            <Text style={styles.issueButtonText}>−</Text>
-          </TouchableOpacity>
-
-          <View style={styles.issueQtyBox}>
-            <Text style={styles.issueQtyText}>{issueCount}</Text>
+          <View style={styles.blockRow}>
+            <View style={styles.blockColumn}>
+              <Text style={styles.label}>Артикул</Text>
+              <Text style={styles.value}>{medicine.article}</Text>
+            </View>
           </View>
 
-          <TouchableOpacity
-            style={[
-              styles.issueButtonSmall,
-              currentStock <= 0 && styles.issueButtonDisabled,
-            ]}
-            onPress={() => handleChangeIssue(+1)}
-            disabled={currentStock <= 0}
-          >
-            <Text style={styles.issueButtonText}>+</Text>
-          </TouchableOpacity>
+          <View style={styles.block}>
+            <Text style={styles.label}>Лекарственная форма</Text>
+            <Text style={styles.value}>{medicine.form}</Text>
+          </View>
 
-          <Text style={styles.issueHint}>доступно: {currentStock} ед.</Text>
-        </View>
+          <View style={styles.block}>
+            <Text style={styles.label}>Дозировка</Text>
+            <Text style={styles.value}>{medicine.dosage}</Text>
+          </View>
 
-        <TouchableOpacity
-          style={[
-            styles.issueButton,
-            (issueCount <= 0 || currentStock <= 0 || isSaving) &&
-              styles.issueButtonDisabled,
-          ]}
-          onPress={handleIssue}
-          disabled={issueCount <= 0 || currentStock <= 0 || isSaving}
-        >
-          <Text style={styles.issueButtonMainText}>
-            {isSaving ? "Сохраняем..." : "Взять препарат"}
+          <View style={styles.blockRow}>
+            <View style={styles.blockColumn}>
+              <Text style={styles.label}>Минимальный остаток</Text>
+              <Text style={styles.value}>{medicine.minStock}</Text>
+            </View>
+            <View style={styles.blockColumn}>
+              <Text style={styles.label}>В упаковке</Text>
+              <Text style={styles.value}>{medicine.stockPerPack}</Text>
+            </View>
+          </View>
+
+          <View style={styles.blockRow}>
+            <View style={styles.blockColumn}>
+              <Text style={styles.label}>На складе сейчас</Text>
+              <Text style={styles.value}>{currentStock}</Text>
+            </View>
+            <View style={styles.blockColumn}>
+              <Text style={styles.label}>Отклонение</Text>
+              {isBelowMin ? (
+                <Text style={[styles.value, styles.valuePositive]}>
+                  Не хватает {currentDiff}
+                </Text>
+              ) : (
+                <Text style={styles.valueMuted}>В норме</Text>
+              )}
+            </View>
+          </View>
+
+          {isBelowMin && (
+            <View style={styles.warningBox}>
+              <Text style={styles.warningText}>
+                Остаток ниже минимального значения на {currentDiff} ед.
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.separator} />
+
+          <Text style={styles.sectionTitle}>Выдать препарат</Text>
+          <Text style={styles.sectionHint}>
+            Укажите количество единиц, которое нужно выдать.
           </Text>
-        </TouchableOpacity>
-      </View>
+
+          <View style={styles.issueRow}>
+            <TouchableOpacity
+              style={[
+                styles.issueButtonSmall,
+                issueCount <= 0 && styles.issueButtonDisabled,
+              ]}
+              onPress={() => handleChangeIssue(-1)}
+              disabled={issueCount <= 0}
+            >
+              <Text style={styles.issueButtonText}>−</Text>
+            </TouchableOpacity>
+
+            <View style={styles.issueQtyBox}>
+              <Text style={styles.issueQtyText}>{issueCount}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.issueButtonSmall,
+                currentStock <= 0 && styles.issueButtonDisabled,
+              ]}
+              onPress={() => handleChangeIssue(+1)}
+              disabled={currentStock <= 0}
+            >
+              <Text style={styles.issueButtonText}>+</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.issueHint}>доступно: {currentStock} ед.</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.issueButton,
+              (issueCount <= 0 || currentStock <= 0 || isSaving) &&
+                styles.issueButtonDisabled,
+            ]}
+            onPress={handleIssue}
+            disabled={issueCount <= 0 || currentStock <= 0 || isSaving}
+          >
+            <Text style={styles.issueButtonMainText}>
+              {isSaving ? "Сохраняем..." : "Взять препарат"}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.separator} />
+
+          <View style={styles.qrSection}>
+            <Text style={styles.label}>QR-код препарата</Text>
+            <View style={styles.qrWrapper}>
+              <QRCode value={medicine.qrPayload} size={140} />
+            </View>
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -269,7 +299,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#e9edf5",
-    padding: 16,
   },
   card: {
     flex: 1,
@@ -314,11 +343,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#111827",
   },
-  valueNegative: {
-    color: "#16a34a",
+  valueMuted: {
+    fontSize: 14,
+    color: "#6b7280",
   },
   valuePositive: {
     color: "#b91c1c",
+    fontWeight: "600",
   },
   separator: {
     height: 1,
@@ -335,6 +366,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#6b7280",
     marginBottom: 8,
+  },
+  warningBox: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "#fee2e2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    marginBottom: 16,
+  },
+  warningText: {
+    color: "#b91c1c",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  scrollContent: {
+    padding: 16,
+    flexGrow: 1,
+  },
+  qrSection: {
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  qrWrapper: {
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#f3f4f6",
   },
   issueRow: {
     flexDirection: "row",

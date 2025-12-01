@@ -45,10 +45,19 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [name, setName] = useState("");
   const [specialty, setSpecialty] = useState("Терапевт");
+  const [workLocation, setWorkLocation] = useState("");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showSpecialtyPicker, setShowSpecialtyPicker] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  const applyProfileToForm = (source: UserProfile) => {
+    setName(source.name || "");
+    setAvatarUri(source.avatarUri || null);
+    setSpecialty(source.specialty || "Терапевт");
+    setWorkLocation(source.workLocation || "");
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -56,9 +65,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         const storedProfile = await loadUserProfile();
         if (storedProfile) {
           setProfile(storedProfile);
-          setName(storedProfile.name || "");
-          setAvatarUri(storedProfile.avatarUri || null);
-          setSpecialty(storedProfile.specialty || "Терапевт");
+          applyProfileToForm(storedProfile);
         }
       } catch (e) {
         console.log("Load profile error:", e);
@@ -71,6 +78,10 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const handlePickAvatar = async () => {
+    if (!isEditMode) {
+      Alert.alert("Режим просмотра", "Нажмите «Изменить профиль», чтобы обновить данные.");
+      return;
+    }
     try {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -101,6 +112,10 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleDeleteAvatar = async () => {
+    if (!isEditMode) {
+      Alert.alert("Режим просмотра", "Нажмите «Изменить профиль», чтобы обновить данные.");
+      return;
+    }
     try {
       // убираем из UI
       setAvatarUri(null);
@@ -138,12 +153,13 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         avatarUri: avatarUri ?? null,
         specialty: specialty,
         employeeId: current?.employeeId || "", // сохраняем существующий или оставляем пустым
-        workLocation: current?.workLocation || "",
+        workLocation: workLocation.trim(),
         issuedHistory: current?.issuedHistory || [],
       };
 
       await saveUserProfile(newProfile);
       setProfile(newProfile);
+      setIsEditMode(false);
       Alert.alert("Готово", "Профиль обновлён");
     } catch (e) {
       console.log("Save profile error:", e);
@@ -161,6 +177,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       setName("");
       setAvatarUri(null);
       setSpecialty("Терапевт");
+      setWorkLocation("");
 
       navigation.reset({
         index: 0,
@@ -170,6 +187,19 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       console.log("Logout error:", e);
       Alert.alert("Ошибка", "Не удалось выйти из аккаунта");
     }
+  };
+
+  const handleStartEdit = () => {
+    if (!profile) return;
+    setIsEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    if (profile) {
+      applyProfileToForm(profile);
+    }
+    setIsEditMode(false);
+    setShowSpecialtyPicker(false);
   };
 
   const handleViewHistory = () => {
@@ -204,71 +234,129 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               )}
 
-              <TouchableOpacity
-                style={styles.avatarButton}
-                onPress={handlePickAvatar}
-              >
-                <Text style={styles.avatarButtonText}>Изменить фото</Text>
-              </TouchableOpacity>
+              {isEditMode && (
+                <>
+                  <TouchableOpacity
+                    style={styles.avatarButton}
+                    onPress={handlePickAvatar}
+                  >
+                    <Text style={styles.avatarButtonText}>Изменить фото</Text>
+                  </TouchableOpacity>
 
-              {avatarUri && (
+                  {avatarUri && (
+                    <TouchableOpacity
+                      style={styles.avatarDeleteButton}
+                      onPress={handleDeleteAvatar}
+                    >
+                      <Text style={styles.avatarDeleteButtonText}>
+                        Удалить фото
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
+
+            <View style={styles.actionsRow}>
+              {isEditMode ? (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButtonPrimary,
+                      isSaving && styles.actionButtonDisabled,
+                    ]}
+                    onPress={handleSave}
+                    disabled={isSaving}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {isSaving ? "Сохраняем..." : "Сохранить"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButtonSecondary}
+                    onPress={handleCancelEdit}
+                  >
+                    <Text style={styles.actionButtonSecondaryText}>Отмена</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
                 <TouchableOpacity
-                  style={styles.avatarDeleteButton}
-                  onPress={handleDeleteAvatar}
+                  style={styles.actionButtonPrimary}
+                  onPress={handleStartEdit}
+                  disabled={!profile}
                 >
-                  <Text style={styles.avatarDeleteButtonText}>
-                    Удалить фото
-                  </Text>
+                  <Text style={styles.actionButtonText}>Изменить профиль</Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* Редактирование имени */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Персональные данные</Text>
+              {!isEditMode && profile?.employeeId && (
+                <Text style={styles.sectionHint}>
+                  ID: {profile.employeeId}
+                </Text>
+              )}
+            </View>
+
             <View style={styles.field}>
               <Text style={styles.label}>Ваше имя</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Введите имя"
-                placeholderTextColor="#9ca6b5"
-                value={name}
-                onChangeText={setName}
-                underlineColorAndroid="transparent"
-                returnKeyType="done"
-              />
+              {isEditMode ? (
+                <TextInput
+                  style={styles.input}
+                  placeholder="Введите имя"
+                  placeholderTextColor="#9ca6b5"
+                  value={name}
+                  onChangeText={setName}
+                  underlineColorAndroid="transparent"
+                  returnKeyType="done"
+                />
+              ) : (
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyText}>
+                    {name.trim() || "Не указано"}
+                  </Text>
+                </View>
+              )}
             </View>
 
-            {/* Выбор специализации */}
             <View style={styles.field}>
               <Text style={styles.label}>Специализация</Text>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setShowSpecialtyPicker(true)}
-              >
-                <Text style={styles.pickerButtonText}>{specialty}</Text>
-                <Text style={styles.pickerButtonArrow}>▼</Text>
-              </TouchableOpacity>
+              {isEditMode ? (
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowSpecialtyPicker(true)}
+                >
+                  <Text style={styles.pickerButtonText}>{specialty}</Text>
+                  <Text style={styles.pickerButtonArrow}>▼</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyText}>{specialty}</Text>
+                </View>
+              )}
             </View>
 
-            {/* ID сотрудника (только для чтения) */}
-            {profile?.employeeId && (
-              <View style={styles.field}>
-                <Text style={styles.label}>ID сотрудника</Text>
+            <View style={styles.field}>
+              <Text style={styles.label}>Место работы</Text>
+              {isEditMode ? (
+                <TextInput
+                  style={styles.input}
+                  placeholder="Например, Отделение №3"
+                  placeholderTextColor="#9ca6b5"
+                  value={workLocation}
+                  onChangeText={setWorkLocation}
+                  underlineColorAndroid="transparent"
+                  returnKeyType="done"
+                />
+              ) : (
                 <View style={styles.readOnlyField}>
-                  <Text style={styles.readOnlyText}>{profile.employeeId}</Text>
+                  <Text style={styles.readOnlyText}>
+                    {workLocation.trim() || "Не указано"}
+                  </Text>
                 </View>
-              </View>
-            )}
-
-            {/* Кнопка сохранить */}
-            <TouchableOpacity
-              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-              onPress={handleSave}
-              disabled={isSaving}
-            >
-              <Text style={styles.saveButtonText}>
-                {isSaving ? "Сохраняем..." : "Сохранить"}
-              </Text>
-            </TouchableOpacity>
+              )}
+            </View>
 
             {/* Кнопка истории выданных препаратов */}
             <TouchableOpacity
@@ -276,7 +364,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               onPress={handleViewHistory}
             >
               <Text style={styles.historyButtonText}>
-                📊 История выданных препаратов
+                История выданных препаратов
               </Text>
             </TouchableOpacity>
 
@@ -463,6 +551,55 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     fontFamily: "monospace",
   },
+  sectionHeader: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  sectionHint: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 2,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginVertical: 4,
+    flexWrap: "wrap",
+  },
+  actionButtonPrimary: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: "#3390ec",
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionButtonSecondary: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: "#e5e7eb",
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionButtonDisabled: {
+    opacity: 0.7,
+  },
+  actionButtonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  actionButtonSecondaryText: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: "600",
+  },
   infoCard: {
     borderRadius: 12,
     backgroundColor: "#eff6ff",
@@ -480,22 +617,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#1e40af",
     lineHeight: 18,
-  },
-  saveButton: {
-    marginTop: 8,
-    borderRadius: 999,
-    backgroundColor: "#3390ec",
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
   },
   historyButton: {
     borderRadius: 999,

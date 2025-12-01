@@ -31,9 +31,32 @@ function generateEmployeeId(): string {
     .toUpperCase()}`;
 }
 
-export async function saveUserProfile(profile: UserProfile): Promise<void> {
+const withDefaults = (
+  overrides: Partial<UserProfile>,
+  fallback?: UserProfile | null
+): UserProfile => {
+  return {
+    name: overrides.name ?? fallback?.name ?? "",
+    isStaff: overrides.isStaff ?? fallback?.isStaff ?? false,
+    avatarUri: overrides.avatarUri ?? fallback?.avatarUri ?? null,
+    specialty: overrides.specialty ?? fallback?.specialty ?? "Терапевт",
+    employeeId:
+      overrides.employeeId ?? fallback?.employeeId ?? generateEmployeeId(),
+    workLocation: overrides.workLocation ?? fallback?.workLocation ?? "",
+    issuedHistory:
+      overrides.issuedHistory ??
+      fallback?.issuedHistory ??
+      ([] as MedicineIssuedRecord[]),
+  };
+};
+
+export async function saveUserProfile(
+  profile: Partial<UserProfile>
+): Promise<void> {
   try {
-    await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+    const existing = await loadUserProfile();
+    const normalized = withDefaults(profile, existing);
+    await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(normalized));
   } catch (e) {
     console.warn("saveUserProfile error", e);
   }
@@ -45,16 +68,12 @@ export async function loadUserProfile(): Promise<UserProfile | null> {
     if (!json) return null;
 
     const raw = JSON.parse(json) as Partial<UserProfile>;
-
-    return {
-      name: raw.name ?? "",
-      isStaff: !!raw.isStaff,
-      avatarUri: raw.avatarUri ?? null,
-      specialty: raw?.specialty ?? "Терапевт",
-      employeeId: raw?.employeeId ?? generateEmployeeId(),
-      workLocation: raw?.workLocation ?? "",
-      issuedHistory: Array.isArray(raw?.issuedHistory) ? raw.issuedHistory : [],
-    };
+    return withDefaults({
+      ...raw,
+      issuedHistory: Array.isArray(raw?.issuedHistory)
+        ? raw?.issuedHistory
+        : [],
+    });
   } catch (e) {
     console.warn("loadUserProfile error", e);
     return null;

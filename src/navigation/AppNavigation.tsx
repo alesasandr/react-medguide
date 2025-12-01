@@ -110,7 +110,7 @@ const AppNavigation: React.FC = () => {
       <Stack.Screen
         name="MedicineCodeSearch"
         component={MedicineCodeSearchScreen}
-        options={{ title: "Поиск по коду" }}
+        options={{ title: "Поиск по артикулу" }}
       />
 
       <Stack.Screen

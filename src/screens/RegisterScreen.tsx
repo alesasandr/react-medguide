@@ -148,6 +148,8 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             style={styles.linkButton}
             onPress={handleBackToLogin}
+            activeOpacity={0.8}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Text style={styles.linkText}>У меня уже есть аккаунт</Text>
           </TouchableOpacity>
@@ -216,11 +218,18 @@ const styles = StyleSheet.create({
   },
   linkButton: {
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 8,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#dbeafe",
   },
   linkText: {
     color: "#3390ec",
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
 

@@ -107,6 +107,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.linkButton}
             // navigate (НЕ replace) — чтобы появилась нормальная стрелка назад
             onPress={() => navigation.navigate("Register")}
+            activeOpacity={0.8}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Text style={styles.linkText}>Создать аккаунт</Text>
           </TouchableOpacity>
@@ -114,6 +116,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => navigation.navigate("ResetPassword")}
+            activeOpacity={0.8}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Text style={styles.linkText}>Забыли пароль?</Text>
           </TouchableOpacity>
@@ -187,12 +191,19 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   linkButton: {
+    marginTop: 8,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#dbeafe",
     alignItems: "center",
-    marginTop: 4,
   },
   linkText: {
     color: "#3390ec",
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
 

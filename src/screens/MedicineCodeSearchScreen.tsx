@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import { medicines, Medicine } from "../db/medicines";
+import { Medicine, getMedicineByArticle } from "../db/medicines";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicineCodeSearch">;
 
@@ -21,24 +21,17 @@ const MedicineCodeSearchScreen: React.FC<Props> = ({ navigation }) => {
   const [error, setError] = useState<string | null>(null);
 
   const handleSearch = () => {
-    const raw = codeInput.trim();
+    const raw = codeInput.trim().toUpperCase();
 
     if (!raw) {
-      setError("Введите код препарата");
+      setError("Введите артикул препарата");
       setFoundMedicine(null);
       return;
     }
 
-    const id = Number(raw);
-    if (Number.isNaN(id)) {
-      setError("Код должен быть числом (ID препарата)");
-      setFoundMedicine(null);
-      return;
-    }
-
-    const med = medicines.find((m) => m.id === id);
+    const med = getMedicineByArticle(raw);
     if (!med) {
-      setError("Препарат с таким кодом не найден");
+      setError("Препарат с таким артикулом не найден");
       setFoundMedicine(null);
       return;
     }
@@ -56,20 +49,20 @@ const MedicineCodeSearchScreen: React.FC<Props> = ({ navigation }) => {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.root}>
         <View style={styles.card}>
-          <Text style={styles.title}>Поиск препарата по коду</Text>
+          <Text style={styles.title}>Поиск препарата по артикулу</Text>
           <Text style={styles.subtitle}>
-            Введите уникальный код (ID) препарата, чтобы быстро перейти к нему.
+            Введите артикул (например MG-00025).
           </Text>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Код препарата (ID)</Text>
+            <Text style={styles.label}>Артикул препарата</Text>
             <TextInput
               style={styles.input}
-              placeholder="Например, 101"
+              placeholder="Например, MG-00025"
               placeholderTextColor="#9ca6b5"
-              keyboardType="number-pad"
               value={codeInput}
               onChangeText={setCodeInput}
+              autoCapitalize="characters"
               underlineColorAndroid="transparent"
               returnKeyType="search"
               onSubmitEditing={handleSearch}
@@ -88,7 +81,9 @@ const MedicineCodeSearchScreen: React.FC<Props> = ({ navigation }) => {
           {foundMedicine && (
             <View style={styles.resultCard}>
               <Text style={styles.resultTitle}>{foundMedicine.name}</Text>
-              <Text style={styles.resultCode}>Код: {foundMedicine.id}</Text>
+              <Text style={styles.resultCode}>
+                Артикул: {foundMedicine.article}
+              </Text>
               <Text style={styles.resultSub}>
                 {foundMedicine.form} • {foundMedicine.dosage}
               </Text>

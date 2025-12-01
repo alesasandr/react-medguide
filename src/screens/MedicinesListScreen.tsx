@@ -18,18 +18,23 @@ type Props = NativeStackScreenProps<RootStackParamList, "MedicinesList">;
 
 const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
   const [query, setQuery] = useState("");
+  const [showOnlyLow, setShowOnlyLow] = useState(false);
+
+  const isBelowMin = (med: Medicine) => med.stock < med.minStock;
 
   const filtered: Medicine[] = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return medicines;
-    return medicines.filter((m) =>
-      (m.name + " " + m.mnn).toLowerCase().includes(q)
-    );
-  }, [query]);
+    return medicines.filter((m) => {
+      const matchesQuery =
+        !q || (m.name + " " + m.mnn + " " + m.article).toLowerCase().includes(q);
+      const matchesLow = !showOnlyLow || isBelowMin(m);
+      return matchesQuery && matchesLow;
+    });
+  }, [query, showOnlyLow]);
 
   const renderItem = ({ item }: { item: Medicine }) => {
-    const isLowStock =
-      typeof item.diff === "number" ? item.diff < 0 : false;
+    const shortage = Math.max(item.minStock - item.stock, 0);
+    const isLowStock = shortage > 0;
 
     return (
       <TouchableOpacity
@@ -39,7 +44,7 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.itemHeaderRow}>
           <Text style={styles.itemName}>{item.name}</Text>
           <View style={styles.codeBadge}>
-            <Text style={styles.codeBadgeText}>Код: {item.id}</Text>
+            <Text style={styles.codeBadgeText}>Артикул: {item.article}</Text>
           </View>
         </View>
 
@@ -49,7 +54,7 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
 
         {isLowStock && (
           <Text style={styles.lowStockText}>
-            Внимание: остаток ниже неснижаемого!
+            Не хватает {shortage} ед. до минимального остатка
           </Text>
         )}
       </TouchableOpacity>
@@ -73,6 +78,26 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
           underlineColorAndroid="transparent"
           returnKeyType="search"
         />
+
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              showOnlyLow && styles.filterChipActive,
+            ]}
+            onPress={() => setShowOnlyLow((prev) => !prev)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                showOnlyLow && styles.filterChipTextActive,
+              ]}
+            >
+              {showOnlyLow ? "Показаны дефицитные" : "Только ниже нормы"}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <FlatList
           data={filtered}
@@ -112,6 +137,31 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
     marginBottom: 12,
+  },
+  filterRow: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    marginBottom: 12,
+  },
+  filterChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: "#fff",
+  },
+  filterChipActive: {
+    backgroundColor: "#fee2e2",
+    borderColor: "#ef4444",
+  },
+  filterChipText: {
+    fontSize: 13,
+    color: "#4b5563",
+    fontWeight: "500",
+  },
+  filterChipTextActive: {
+    color: "#b91c1c",
   },
   listContent: {
     paddingBottom: 16,

@@ -1,6 +1,10 @@
 // src/db/medicines.ts
 
-export interface Medicine {
+const ARTICLE_PREFIX = "MG-";
+// Используем внутренний префикс, а не веб‑URL, чтобы QR не открывался в браузере
+const QR_BASE_URL = "med:";
+
+interface MedicineBase {
   id: number;
   name: string;
   mnn: string;
@@ -12,7 +16,12 @@ export interface Medicine {
   diff: number;
 }
 
-export const medicines: Medicine[] = [
+export interface Medicine extends MedicineBase {
+  article: string;
+  qrPayload: string;
+}
+
+const rawMedicines: MedicineBase[] = [
   {
     id: 0,
     name: "Абиратерон-ТЛ, Абитера",
@@ -443,3 +452,43 @@ export const medicines: Medicine[] = [
     diff: -1,
   },
 ];
+
+const padId = (value: number) => String(value).padStart(5, "0");
+
+const buildArticle = (id: number) => `${ARTICLE_PREFIX}${padId(id + 1)}`;
+
+const buildQrPayload = (article: string) => `${QR_BASE_URL}${article}`;
+
+export const medicines: Medicine[] = rawMedicines.map((item) => {
+  const article = buildArticle(item.id);
+  return {
+    ...item,
+    article,
+    qrPayload: buildQrPayload(article),
+  };
+});
+
+const normalize = (input: string) => input.trim().toUpperCase();
+
+export const getMedicineByArticle = (code: string) => {
+  const normalized = normalize(code);
+  return medicines.find((med) => med.article.toUpperCase() === normalized);
+};
+
+export const getMedicineByAnyCode = (code: string) => {
+  const normalized = normalize(code);
+
+  const byArticle = medicines.find(
+    (med) => med.article.toUpperCase() === normalized
+  );
+  if (byArticle) {
+    return byArticle;
+  }
+
+  const id = Number(normalized);
+  if (!Number.isNaN(id)) {
+    return medicines.find((med) => med.id === id);
+  }
+
+  return undefined;
+};

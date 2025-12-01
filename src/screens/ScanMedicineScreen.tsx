@@ -14,7 +14,7 @@ import {
 } from "expo-camera";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import { medicines } from "../db/medicines";
+import { getMedicineByAnyCode } from "../db/medicines";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ScanMedicine">;
 
@@ -29,35 +29,43 @@ const ScanMedicineScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [permission, requestPermission]);
 
+  const normalizePayload = (payload: string) => {
+    const trimmed = payload.trim();
+    if (!trimmed) return "";
+
+    if (trimmed.startsWith("med:")) {
+      return trimmed.slice(4);
+    }
+
+    if (trimmed.toLowerCase().startsWith("https://medguide.app/medicine/")) {
+      return trimmed.split("/").pop() ?? "";
+    }
+
+    return trimmed;
+  };
+
   const handleBarCodeScanned = (result: any) => {
     if (scanned) return;
 
     setScanned(true);
 
-    const raw = String(result?.data ?? "").trim();
-    let id: number | null = null;
-
-    if (raw.startsWith("med:")) {
-      id = Number(raw.slice(4));
-    } else {
-      id = Number(raw);
-    }
-
-    if (!id || Number.isNaN(id)) {
+    const raw = String(result?.data ?? "");
+    const normalized = normalizePayload(raw);
+    if (!normalized) {
       setMessage("Неверный формат QR-кода");
       return;
     }
 
-    const med = medicines.find((m) => m.id === id);
+    const med = getMedicineByAnyCode(normalized);
     if (!med) {
-      setMessage(`Препарат с кодом ${id} не найден`);
+      setMessage(`Препарат с артикулом ${normalized} не найден`);
       return;
     }
 
     setMessage(`Найден препарат: ${med.name}`);
 
     setTimeout(() => {
-      navigation.replace("MedicineDetails", { id });
+      navigation.replace("MedicineDetails", { id: med.id });
     }, 800);
   };
 

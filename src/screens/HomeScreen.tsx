@@ -39,50 +39,73 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => navigation.navigate("MedicinesList")}
+            activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.primaryButtonText}>
-              Открыть список препаратов
-            </Text>
-            <Text style={styles.primaryButtonSubText}>
-              Просмотр доступных препаратов и деталей по каждому.
-            </Text>
+            <View style={styles.buttonRow}>
+              <View style={styles.buttonTextWrapper}>
+                <Text style={styles.primaryButtonText}>
+                  Открыть список препаратов
+                </Text>
+                <Text style={styles.primaryButtonSubText}>
+                  Просмотр доступных препаратов и деталей по каждому.
+                </Text>
+              </View>
+              <Text style={styles.buttonChevron}>›</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => navigation.navigate("Profile")}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={styles.secondaryButtonText}>Перейти в профиль</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Блок поиска: по коду + сканирование */}
+        {/* Блок поиска: по артикулу + сканирование */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Поиск</Text>
 
-          {/* Поиск по коду (остался как в прошлой ЛР) */}
+          {/* Поиск по артикулу */}
           <TouchableOpacity
             style={styles.accentButton}
             onPress={() => navigation.navigate("MedicineCodeSearch")}
+            activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.accentButtonTitle}>Найти препарат по коду</Text>
-            <Text style={styles.accentButtonText}>
-              Введите уникальный код (ID) препарата вручную.
-            </Text>
+            <View style={styles.buttonRow}>
+              <View style={styles.buttonTextWrapper}>
+                <Text style={styles.accentButtonTitle}>
+                  Найти препарат по артикулу
+                </Text>
+                <Text style={styles.accentButtonText}>
+                  Введите артикул вручную.
+                </Text>
+              </View>
+              <Text style={styles.buttonChevronAccent}>›</Text>
+            </View>
           </TouchableOpacity>
 
           {/* Новый вариант — сканирование QR-кода */}
           <TouchableOpacity
             style={styles.accentButton}
             onPress={() => navigation.navigate("ScanMedicine")}
+            activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.accentButtonTitle}>
-              Сканировать QR-код препарата
-            </Text>
-            <Text style={styles.accentButtonText}>
-              Откройте камеру и отсканируйте QR-код на упаковке, чтобы найти
-              нужный препарат.
-            </Text>
+            <View style={styles.buttonRow}>
+              <View style={styles.buttonTextWrapper}>
+                <Text style={styles.accentButtonTitle}>
+                  Сканировать QR-код препарата
+                </Text>
+                <Text style={styles.accentButtonText}>
+                  Быстрый переход в карточку препарата по QR.
+                </Text>
+              </View>
+              <Text style={styles.buttonChevronAccent}>›</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -131,6 +154,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#3390ec",
     paddingVertical: 12,
     paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#1d4ed8",
   },
   primaryButtonText: {
     color: "#ffffff",
@@ -161,6 +186,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: "#fbbf24",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  buttonTextWrapper: {
+    flex: 1,
+  },
+  buttonChevron: {
+    fontSize: 32,
+    color: "#bfdbfe",
+    fontWeight: "300",
+  },
+  buttonChevronAccent: {
+    fontSize: 32,
+    color: "#f59e0b",
+    fontWeight: "300",
   },
   accentButtonTitle: {
     fontSize: 15,

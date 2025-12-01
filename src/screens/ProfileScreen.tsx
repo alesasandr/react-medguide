@@ -1,5 +1,5 @@
 // src/screens/ProfileScreen.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
+  ScrollView,
+  Modal,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -24,12 +26,29 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
+const SPECIALTIES = [
+  "Терапевт",
+  "Кардиолог",
+  "Невролог",
+  "Пульмонолог",
+  "Гастроэнтеролог",
+  "Эндокринолог",
+  "Ревматолог",
+  "Уролог",
+  "Хирург",
+  "Ортопед",
+  "Офтальмолог",
+  "ЛОР",
+];
+
 const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [name, setName] = useState("");
+  const [specialty, setSpecialty] = useState("Терапевт");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSpecialtyPicker, setShowSpecialtyPicker] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -39,6 +58,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           setProfile(storedProfile);
           setName(storedProfile.name || "");
           setAvatarUri(storedProfile.avatarUri || null);
+          setSpecialty(storedProfile.specialty || "Терапевт");
         }
       } catch (e) {
         console.log("Load profile error:", e);
@@ -115,8 +135,11 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       const newProfile: UserProfile = {
         name: name.trim(),
         isStaff: current?.isStaff ?? false,
-        // здесь как раз и сохраняем avatarUri в нашей "базе"
         avatarUri: avatarUri ?? null,
+        specialty: specialty,
+        employeeId: current?.employeeId || "", // сохраняем существующий или оставляем пустым
+        workLocation: current?.workLocation || "",
+        issuedHistory: current?.issuedHistory || [],
       };
 
       await saveUserProfile(newProfile);
@@ -137,6 +160,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       setProfile(null);
       setName("");
       setAvatarUri(null);
+      setSpecialty("Терапевт");
 
       navigation.reset({
         index: 0,
@@ -146,6 +170,10 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       console.log("Logout error:", e);
       Alert.alert("Ошибка", "Не удалось выйти из аккаунта");
     }
+  };
+
+  const handleViewHistory = () => {
+    navigation.navigate("IssuedHistory" as any);
   };
 
   if (isLoading) {
@@ -159,73 +187,152 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.root}>
-        <View style={styles.card}>
-          {/* Аватарка */}
-          <View style={styles.avatarWrapper}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarPlaceholderText}>
-                  {name.trim()
-                    ? name.trim().charAt(0).toUpperCase()
-                    : "?"}
-                </Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.card}>
+            {/* Аватарка */}
+            <View style={styles.avatarWrapper}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarPlaceholderText}>
+                    {name.trim() ? name.trim().charAt(0).toUpperCase() : "?"}
+                  </Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.avatarButton}
+                onPress={handlePickAvatar}
+              >
+                <Text style={styles.avatarButtonText}>Изменить фото</Text>
+              </TouchableOpacity>
+
+              {avatarUri && (
+                <TouchableOpacity
+                  style={styles.avatarDeleteButton}
+                  onPress={handleDeleteAvatar}
+                >
+                  <Text style={styles.avatarDeleteButtonText}>
+                    Удалить фото
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Редактирование имени */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Ваше имя</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Введите имя"
+                placeholderTextColor="#9ca6b5"
+                value={name}
+                onChangeText={setName}
+                underlineColorAndroid="transparent"
+                returnKeyType="done"
+              />
+            </View>
+
+            {/* Выбор специализации */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Специализация</Text>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setShowSpecialtyPicker(true)}
+              >
+                <Text style={styles.pickerButtonText}>{specialty}</Text>
+                <Text style={styles.pickerButtonArrow}>▼</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ID сотрудника (только для чтения) */}
+            {profile?.employeeId && (
+              <View style={styles.field}>
+                <Text style={styles.label}>ID сотрудника</Text>
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyText}>{profile.employeeId}</Text>
+                </View>
               </View>
             )}
 
+            {/* Кнопка сохранить */}
             <TouchableOpacity
-              style={styles.avatarButton}
-              onPress={handlePickAvatar}
+              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+              onPress={handleSave}
+              disabled={isSaving}
             >
-              <Text style={styles.avatarButtonText}>Изменить фото</Text>
+              <Text style={styles.saveButtonText}>
+                {isSaving ? "Сохраняем..." : "Сохранить"}
+              </Text>
             </TouchableOpacity>
 
-            {avatarUri && (
+            {/* Кнопка истории выданных препаратов */}
+            <TouchableOpacity
+              style={styles.historyButton}
+              onPress={handleViewHistory}
+            >
+              <Text style={styles.historyButtonText}>
+                📊 История выданных препаратов
+              </Text>
+            </TouchableOpacity>
+
+            {/* Кнопка выхода из аккаунта */}
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+            >
+              <Text style={styles.logoutButtonText}>Выйти из аккаунта</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        {/* Модальное окно для выбора специализации */}
+        <Modal
+          visible={showSpecialtyPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowSpecialtyPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Выберите специализацию</Text>
+              <ScrollView style={styles.specialtyList}>
+                {SPECIALTIES.map((spec) => (
+                  <TouchableOpacity
+                    key={spec}
+                    style={[
+                      styles.specialtyItem,
+                      specialty === spec && styles.specialtyItemSelected,
+                    ]}
+                    onPress={() => {
+                      setSpecialty(spec);
+                      setShowSpecialtyPicker(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.specialtyItemText,
+                        specialty === spec && styles.specialtyItemTextSelected,
+                      ]}
+                    >
+                      {spec}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
               <TouchableOpacity
-                style={styles.avatarDeleteButton}
-                onPress={handleDeleteAvatar}
+                style={styles.modalCloseButton}
+                onPress={() => setShowSpecialtyPicker(false)}
               >
-                <Text style={styles.avatarDeleteButtonText}>
-                  Удалить фото
-                </Text>
+                <Text style={styles.modalCloseButtonText}>Закрыть</Text>
               </TouchableOpacity>
-            )}
+            </View>
           </View>
-
-          {/* Редактирование имени */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Ваше имя</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Введите имя"
-              placeholderTextColor="#9ca6b5"
-              value={name}
-              onChangeText={setName}
-              underlineColorAndroid="transparent"
-              returnKeyType="done"
-            />
-          </View>
-
-          {/* Кнопка сохранить */}
-          <TouchableOpacity
-            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={isSaving}
-          >
-            <Text style={styles.saveButtonText}>
-              {isSaving ? "Сохраняем..." : "Сохранить"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Кнопка выхода из аккаунта */}
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <Text style={styles.logoutButtonText}>Выйти из аккаунта</Text>
-          </TouchableOpacity>
-        </View>
+        </Modal>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -241,10 +348,12 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#e9edf5",
+  },
+  scrollContent: {
     padding: 16,
+    paddingBottom: 24,
   },
   card: {
-    flex: 1,
     backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 16,
@@ -253,7 +362,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
-    gap: 20,
+    gap: 16,
   },
   avatarWrapper: {
     alignItems: "center",
@@ -309,15 +418,68 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     color: "#4a4a4a",
+    fontWeight: "500",
   },
   input: {
     borderRadius: 12,
     backgroundColor: "#f5f7fb",
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 14,
-    borderWidth: 0,
-    borderColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    color: "#111827",
+  },
+  pickerButton: {
+    flexDirection: "row",
+    borderRadius: 12,
+    backgroundColor: "#f5f7fb",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  pickerButtonText: {
+    fontSize: 14,
+    color: "#111827",
+    fontWeight: "500",
+  },
+  pickerButtonArrow: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  readOnlyField: {
+    borderRadius: 12,
+    backgroundColor: "#f9fafb",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  readOnlyText: {
+    fontSize: 14,
+    color: "#6b7280",
+    fontFamily: "monospace",
+  },
+  infoCard: {
+    borderRadius: 12,
+    backgroundColor: "#eff6ff",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    gap: 6,
+  },
+  infoCardTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1e40af",
+  },
+  infoCardText: {
+    fontSize: 12,
+    color: "#1e40af",
+    lineHeight: 18,
   },
   saveButton: {
     marginTop: 8,
@@ -335,6 +497,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  historyButton: {
+    borderRadius: 999,
+    backgroundColor: "#8b5cf6",
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  historyButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   logoutButton: {
     marginTop: 8,
     borderRadius: 999,
@@ -346,6 +520,60 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: "#ffffff",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  specialtyList: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  specialtyItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 6,
+    backgroundColor: "#f5f7fb",
+  },
+  specialtyItemSelected: {
+    backgroundColor: "#3390ec",
+  },
+  specialtyItemText: {
+    fontSize: 15,
+    color: "#111827",
+  },
+  specialtyItemTextSelected: {
+    color: "#ffffff",
+    fontWeight: "600",
+  },
+  modalCloseButton: {
+    marginHorizontal: 16,
+    borderRadius: 999,
+    backgroundColor: "#e5e7eb",
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  modalCloseButtonText: {
+    color: "#111827",
+    fontSize: 14,
     fontWeight: "600",
   },
 });

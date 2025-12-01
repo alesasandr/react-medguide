@@ -14,7 +14,8 @@ import ChatScreen from "../screens/ChatScreen";
 import MedicinesListScreen from "../screens/MedicinesListScreen";
 import MedicineDetailsScreen from "../screens/MedicineDetailsScreen";
 import MedicineCodeSearchScreen from "../screens/MedicineCodeSearchScreen";
-import ScanMedicineScreen from "../screens/ScanMedicineScreen"; // ← ВАЖНО
+import ScanMedicineScreen from "../screens/ScanMedicineScreen";
+import IssuedHistoryScreen from "../screens/IssuedHistoryScreen";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -22,6 +23,7 @@ export type RootStackParamList = {
   ResetPassword: undefined;
   Home: undefined;
   Profile: undefined;
+  IssuedHistory: undefined;
   InstructionsList: undefined;
   InstructionDetails: { id: number };
   Chat: undefined;
@@ -67,6 +69,12 @@ const AppNavigation: React.FC = () => {
         name="Profile"
         component={ProfileScreen}
         options={{ title: "Профиль" }}
+      />
+
+      <Stack.Screen
+        name="IssuedHistory"
+        component={IssuedHistoryScreen}
+        options={{ title: "История выданных препаратов" }}
       />
 
       <Stack.Screen

@@ -1,16 +1,15 @@
 // src/screens/MedicineDetailsScreen.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { medicines, Medicine } from "../db/medicines";
+import {
+  loadUserProfile,
+  addIssuedRecord,
+  MedicineIssuedRecord,
+} from "../storage/userStorage";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicineDetails">;
 
@@ -130,6 +129,21 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
         STOCK_OVERRIDES_KEY,
         JSON.stringify(updatedAll)
       );
+
+      // Сохраняем запись в историю
+      const profile = await loadUserProfile();
+      if (profile) {
+        const record: MedicineIssuedRecord = {
+          id: Date.now().toString(),
+          medicineId: id,
+          medicineName: medicine.name,
+          quantity: issueCount,
+          issuedAt: new Date().toISOString(),
+          doctorId: profile.employeeId,
+          doctorName: profile.name,
+        };
+        await addIssuedRecord(record);
+      }
 
       setOverride(updatedOverride);
       setIssueCount(0);

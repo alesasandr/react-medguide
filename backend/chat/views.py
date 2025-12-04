@@ -5,8 +5,11 @@ from django.contrib.auth.models import User
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from chat.models import Profile, IssuedMedicine
+from chat.serializers import ProfileSerializer, IssuedMedicineSerializer
+from medicines.models import Medicine
 
 
 @api_view(["POST"])
@@ -142,3 +145,70 @@ def instruction_detail(request, pk):
     }
     return JsonResponse(data)
 
+
+class ProfileViewSet(viewsets.ModelViewSet):
+    """API для профилей пользователей"""
+    queryset = Profile.objects.all()
+    serializer_class = ProfileSerializer
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """Получить профиль текущего пользователя"""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Не авторизован'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            profile = request.user.profile
+            serializer = self.get_serializer(profile)
+            return Response(serializer.data)
+        except Profile.DoesNotExist:
+            return Response({'error': 'Профиль не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['put', 'patch'])
+    def update_me(self, request):
+        """Обновить профиль текущего пользователя"""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Не авторизован'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            profile = request.user.profile
+        except Profile.DoesNotExist:
+            profile = Profile.objects.create(user=request.user)
+        
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class IssuedMedicineViewSet(viewsets.ModelViewSet):
+    """API для истории выданных препаратов"""
+    queryset = IssuedMedicine.objects.all()
+    serializer_class = IssuedMedicineSerializer
+
+    @action(detail=False, methods=['get'])
+    def my_issued(self, request):
+        """Получить список выданных препаратов текущего пользователя"""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Не авторизован'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            profile = request.user.profile
+            issued = IssuedMedicine.objects.filter(doctor=profile).order_by('-issued_at')
+            serializer = self.get_serializer(issued, many=True)
+            return Response(serializer.data)
+        except Profile.DoesNotExist:
+            return Response({'error': 'Профиль не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+    def perform_create(self, serializer):
+        """При создании записи автоматически привязываем к профилю текущего пользователя"""
+        if not self.request.user.is_authenticated:
+            raise Response({'error': 'Не авторизован'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            profile = self.request.user.profile
+        except Profile.DoesNotExist:
+            profile = Profile.objects.create(user=self.request.user)
+        
+        serializer.save(doctor=profile)

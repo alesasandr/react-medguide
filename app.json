@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "react-medguide",
-    "slug": "react-medguide",
+    "name": "MedGuide",
+    "slug": "medguide",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,22 +13,42 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.alesasandr.medguide",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "requirements": ["armv7", "arm64"],
+      "infoPlist": {
+        "NSCameraUsageDescription": "Требуется доступ к камере для сканирования кодов лекарств",
+        "NSPhotoLibraryUsageDescription": "Требуется доступ к фотографиям для загрузки изображений"
+      },
+      "permissions": ["CAMERA", "PHOTO_LIBRARY"]
     },
     "android": {
+      "package": "com.alesasandr.medguide",
+      "versionCode": 1,
+      "buildNumber": "1",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-barcode-scanner",
-      "expo-sqlite"
-    ]
+    "plugins": ["expo-barcode-scanner"],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
   }
 }

@@ -13,7 +13,7 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
-import { registerUser } from "../services/authService";
+import { registerUser } from "../api/authApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Register">;
 
@@ -49,10 +49,10 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       setIsSubmitting(true);
 
       const user = await registerUser({
+        full_name: fullName.trim(),
         email: email.trim(),
         password: password.trim(),
-        fullName: fullName.trim(),
-        isStaff: false,
+        is_staff: false,
       });
 
       const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -60,18 +60,18 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         throw new Error("Некорректный формат e-mail");
       }
 
-      // ✅ Сохраняем ПОЛНЫЙ профиль со всеми обязательными полями
+      // ✅ Сохраняем профиль локально (для оффлайна)
       await saveUserProfile({
         name: user.full_name || user.email,
         isStaff: user.is_staff,
         avatarUri: null,
-        specialty: "Терапевт", // ✅ Значение по умолчанию
-        employeeId: `EMP-${user.id}-${Date.now()}`, // ✅ Генерируем правильный ID
-        workLocation: "", // ✅ Пустое значение
-        issuedHistory: [], // ✅ Пустой массив для новых пользователей
+        specialty: "Терапевт",
+        employeeId: user.id ? `DOC-${user.id}` : `DOC-${Date.now()}`,
+        workLocation: "",
+        issuedHistory: [],
       });
 
-      Alert.alert("Готово", "Аккаунт создан локально");
+      Alert.alert("Готово", "Аккаунт создан успешно");
       navigation.replace("Home");
     } catch (e: any) {
       console.log("Register error:", e);

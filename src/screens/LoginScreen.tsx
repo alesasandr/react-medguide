@@ -13,7 +13,7 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
-import { loginUser } from "../services/authService";
+import { loginUser, getProfile } from "../api/authApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -31,22 +31,21 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setIsSubmitting(true);
 
-      const user = await loginUser({
-        email: email.trim(),
-        password: password.trim(),
-      });
+      // Авторизуемся на сервере
+      const user = await loginUser(email.trim(), password.trim());
 
-      // ✅ Теперь добавляем все необходимые поля профиля
-      const employeeId = `EMP-${user.id}-${Date.now()}`;
+      // Загружаем профиль из БД
+      const profile = await getProfile();
 
+      // Сохраняем профиль локально
       await saveUserProfile({
-        name: user.full_name || user.email,
-        isStaff: user.is_staff ?? false,
-        avatarUri: null,
-        specialty: "Терапевт", // ✅ Добавлено
-        employeeId, // ✅ Добавлено
-        workLocation: "", // ✅ Добавлено
-        issuedHistory: [], // ✅ Добавлено
+        name: profile.full_name || user.email,
+        isStaff: profile.is_staff ?? false,
+        avatarUri: profile.avatar_url || null,
+        specialty: profile.specialty || "Терапевт",
+        employeeId: profile.employee_id || `DOC-${user.id}`,
+        workLocation: profile.work_location || "",
+        issuedHistory: [],
       });
 
       navigation.replace("Home");

@@ -23,6 +23,7 @@ import {
 } from "../storage/userStorage";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { updateProfile } from "../api/authApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
@@ -163,7 +164,22 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         issuedHistory: current?.issuedHistory || [],
       };
 
+      // Сначала сохраняем локально
       await saveUserProfile(newProfile);
+
+      // Затем синхронизируем с БД
+      try {
+        await updateProfile({
+          full_name: name.trim(),
+          specialty: specialty,
+          work_location: workLocation.trim(),
+          avatar_url: avatarUri || null,
+        });
+      } catch (e) {
+        console.log("Failed to sync profile to server:", e);
+        // Не прерываем работу если синхронизация не удалась
+      }
+
       setProfile(newProfile);
       setIsEditMode(false);
       Alert.alert("Готово", "Профиль обновлён");

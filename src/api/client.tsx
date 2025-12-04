@@ -26,11 +26,11 @@ const getBaseUrl = (): string => {
   if (__DEV__) {
     // Разработка
     if (Platform.OS === "android") {
-      return "http://10.0.2.2:8000/"; // ✅ Правильно для Android эмулятора
+      return "http://10.0.2.2:8000/api/"; // ✅ Правильно для Android эмулятора
     } else if (Platform.OS === "ios") {
-      return "http://localhost:8000/"; // ✅ Правильно для iOS эмулятора
+      return "http://192.168.100.2:8000/api/"; // ✅ Для iOS эмулятора используем локальный IP
     } else {
-      return "http://localhost:8000/"; // ✅ Для Web
+      return "http://192.168.100.2:8000/api/"; // ✅ Для Web используем локальный IP
     }
   }
 

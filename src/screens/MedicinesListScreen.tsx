@@ -1,5 +1,5 @@
 // src/screens/MedicinesListScreen.tsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -18,48 +19,81 @@ type Props = NativeStackScreenProps<RootStackParamList, "MedicinesList">;
 
 const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState(""); // Debounced query
   const [showOnlyLow, setShowOnlyLow] = useState(false);
+
+  // Debounce effect для поиска (300ms задержка)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const isBelowMin = (med: Medicine) => med.stock < med.minStock;
 
   const filtered: Medicine[] = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debouncedQuery.trim().toLowerCase(); // Используем debounced query
     return medicines.filter((m) => {
       const matchesQuery =
-        !q || (m.name + " " + m.mnn + " " + m.article).toLowerCase().includes(q);
+        !q ||
+        (m.name + " " + m.mnn + " " + m.article).toLowerCase().includes(q);
       const matchesLow = !showOnlyLow || isBelowMin(m);
       return matchesQuery && matchesLow;
     });
-  }, [query, showOnlyLow]);
+  }, [debouncedQuery, showOnlyLow]); // Зависит от debounced query
 
-  const renderItem = ({ item }: { item: Medicine }) => {
-    const shortage = Math.max(item.minStock - item.stock, 0);
-    const isLowStock = shortage > 0;
+  // Оптимизация: useCallback для renderItem
+  const renderItem = useCallback(
+    ({ item }: { item: Medicine }) => {
+      const shortage = Math.max(item.minStock - item.stock, 0);
+      const isLowStock = shortage > 0;
 
-    return (
-      <TouchableOpacity
-        style={[styles.item, isLowStock && styles.itemLow]}
-        onPress={() => navigation.navigate("MedicineDetails", { id: item.id })}
-      >
-        <View style={styles.itemHeaderRow}>
-          <Text style={styles.itemName}>{item.name}</Text>
-          <View style={styles.codeBadge}>
-            <Text style={styles.codeBadgeText}>Артикул: {item.article}</Text>
+      return (
+        <TouchableOpacity
+          style={[styles.item, isLowStock && styles.itemLow]}
+          onPress={() =>
+            navigation.navigate("MedicineDetails", { id: item.id })
+          }
+          activeOpacity={0.7}
+        >
+          <View style={styles.itemHeaderRow}>
+            <Text style={styles.itemName} numberOfLines={2}>
+              {item.name}
+            </Text>
+            <View style={styles.codeBadge}>
+              <Text style={styles.codeBadgeText}>Артикул: {item.article}</Text>
+            </View>
           </View>
-        </View>
 
-        <Text style={styles.itemSub}>
-          {item.form} • {item.dosage}
-        </Text>
-
-        {isLowStock && (
-          <Text style={styles.lowStockText}>
-            Не хватает {shortage} ед. до минимального остатка
+          <Text style={styles.itemSub}>
+            {item.form} • {item.dosage}
           </Text>
-        )}
-      </TouchableOpacity>
-    );
-  };
+
+          {isLowStock && (
+            <Text style={styles.lowStockText}>
+              Не хватает {shortage} ед. до минимального остатка
+            </Text>
+          )}
+        </TouchableOpacity>
+      );
+    },
+    [navigation]
+  );
+
+  // Оптимизация: getItemLayout для улучшения скролла
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 120, // примерная высота элемента
+      offset: 120 * index,
+      index,
+    }),
+    []
+  );
+
+  // Оптимизация: keyExtractor для правильного кэширования
+  const keyExtractor = useCallback((item: Medicine) => String(item.id), []);
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -81,10 +115,7 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.filterRow}>
           <TouchableOpacity
-            style={[
-              styles.filterChip,
-              showOnlyLow && styles.filterChipActive,
-            ]}
+            style={[styles.filterChip, showOnlyLow && styles.filterChipActive]}
             onPress={() => setShowOnlyLow((prev) => !prev)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
@@ -99,14 +130,29 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
+        {/* Оптимизированный FlatList */}
         <FlatList
           data={filtered}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          // Оптимизация виртуализации
+          initialNumToRender={10} // Рендерим 10 элементов изначально
+          maxToRenderPerBatch={10} // Рендерим 10 элементов за раз
+          updateCellsBatchingPeriod={50} // Обновляем батчи каждые 50ms
+          removeClippedSubviews={true} // Удаляем невидимые элементы
+          getItemLayout={getItemLayout} // Указываем лейауты элементов
+          // ListEmptyComponent для пустого списка
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {query ? "Препараты не найдены" : "Нет препаратов"}
+              </Text>
+            </View>
+          }
         />
       </View>
     </TouchableWithoutFeedback>
@@ -215,6 +261,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#1d4ed8",
     fontWeight: "500",
+  },
+  // ✅ Стили для пустого списка
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
   },
 });
 

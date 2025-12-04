@@ -33,15 +33,18 @@ const ChatScreen: React.FC<Props> = () => {
 
   // загружаем профиль и сохранённые сообщения
   useEffect(() => {
+    let isMounted = true; // Флаг для отслеживания mount state
+
     const load = async () => {
       const storedProfile = await loadUserProfile();
-      setProfile(storedProfile);
+      if (isMounted) setProfile(storedProfile); // Проверка перед setState
 
       const json = await AsyncStorage.getItem(CHAT_MESSAGES_KEY);
-      if (json) {
+      if (json && isMounted) {
+        // ✅ Проверка перед setState
         try {
           const parsed = JSON.parse(json) as ChatMessage[];
-          setMessages(parsed);
+          if (isMounted) setMessages(parsed);
         } catch {
           // если что-то сломано в JSON — просто игнорируем
         }
@@ -49,6 +52,11 @@ const ChatScreen: React.FC<Props> = () => {
     };
 
     load();
+
+    // Cleanup функция для предотвращения утечки памяти
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const persistMessages = async (list: ChatMessage[]) => {
@@ -171,7 +179,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f1f2f7",
   },
   messageText: {
-    color: "#fff",
+    color: "#333",
   },
   inputRow: {
     flexDirection: "row",

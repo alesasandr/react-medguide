@@ -34,6 +34,7 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
   const [override, setOverride] = useState<StockOverride | null>(null);
   const [issueCount, setIssueCount] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingOverrides, setIsSavingOverrides] = useState(false); // ✅ Флаг для блокировки race condition
 
   const medicine = useMemo<Medicine | undefined>(
     () => medicines.find((m) => m.id === id),
@@ -99,8 +100,15 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
       return;
     }
 
+    // ✅ Проверка блокировки race condition
+    if (isSavingOverrides) {
+      console.warn("⚠️ Попытка двойной сохранения, отмена");
+      return;
+    }
+
     try {
       setIsSaving(true);
+      setIsSavingOverrides(true); // ✅ Блокируем дальнейшие сохранения
 
       // перечитаем все overrides на всякий случай
       const raw = await AsyncStorage.getItem(STOCK_OVERRIDES_KEY);
@@ -167,6 +175,7 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
       Alert.alert("Ошибка", "Не удалось сохранить выдачу препарата");
     } finally {
       setIsSaving(false);
+      setIsSavingOverrides(false); // ✅ Разблокируем
     }
   };
 

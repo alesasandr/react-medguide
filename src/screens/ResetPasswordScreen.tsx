@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import API_BASE_URL from "../api/config";
+import { API_BASE_URL } from "../config/apiConfig"; // ✅ Исправлен импорт (named import)
 
 type Props = NativeStackScreenProps<RootStackParamList, "ResetPassword">;
 

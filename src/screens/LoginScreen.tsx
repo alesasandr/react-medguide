@@ -36,10 +36,17 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         password: password.trim(),
       });
 
+      // ✅ Теперь добавляем все необходимые поля профиля
+      const employeeId = `EMP-${user.id}-${Date.now()}`;
+
       await saveUserProfile({
         name: user.full_name || user.email,
         isStaff: user.is_staff ?? false,
         avatarUri: null,
+        specialty: "Терапевт", // ✅ Добавлено
+        employeeId, // ✅ Добавлено
+        workLocation: "", // ✅ Добавлено
+        issuedHistory: [], // ✅ Добавлено
       });
 
       navigation.replace("Home");
@@ -94,7 +101,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </View>
 
           <TouchableOpacity
-            style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
+            style={[
+              styles.primaryButton,
+              isSubmitting && styles.buttonDisabled,
+            ]}
             onPress={handleLogin}
             disabled={isSubmitting}
           >

@@ -40,6 +40,11 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    if (password.length < 6) {
+      Alert.alert("Ошибка", "Пароль должен быть не менее 6 символов");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -50,10 +55,20 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         isStaff: false,
       });
 
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!regex.test(email.trim())) {
+        throw new Error("Некорректный формат e-mail");
+      }
+
+      // ✅ Сохраняем ПОЛНЫЙ профиль со всеми обязательными полями
       await saveUserProfile({
         name: user.full_name || user.email,
         isStaff: user.is_staff,
         avatarUri: null,
+        specialty: "Терапевт", // ✅ Значение по умолчанию
+        employeeId: `EMP-${user.id}-${Date.now()}`, // ✅ Генерируем правильный ID
+        workLocation: "", // ✅ Пустое значение
+        issuedHistory: [], // ✅ Пустой массив для новых пользователей
       });
 
       Alert.alert("Готово", "Аккаунт создан локально");
@@ -61,8 +76,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     } catch (e: any) {
       console.log("Register error:", e);
       const message =
-        (e && e.message) ||
-        (typeof e === "string" ? e : "Неизвестная ошибка");
+        (e && e.message) || (typeof e === "string" ? e : "Неизвестная ошибка");
       Alert.alert(
         "Ошибка регистрации",
         `Не удалось создать аккаунт:\n${message}`
@@ -136,7 +150,10 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           </View>
 
           <TouchableOpacity
-            style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
+            style={[
+              styles.primaryButton,
+              isSubmitting && styles.buttonDisabled,
+            ]}
             onPress={handleRegister}
             disabled={isSubmitting}
           >

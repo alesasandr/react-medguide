@@ -79,7 +79,10 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const handlePickAvatar = async () => {
     if (!isEditMode) {
-      Alert.alert("Режим просмотра", "Нажмите «Изменить профиль», чтобы обновить данные.");
+      Alert.alert(
+        "Режим просмотра",
+        "Нажмите «Изменить профиль», чтобы обновить данные."
+      );
       return;
     }
     try {
@@ -113,7 +116,10 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleDeleteAvatar = async () => {
     if (!isEditMode) {
-      Alert.alert("Режим просмотра", "Нажмите «Изменить профиль», чтобы обновить данные.");
+      Alert.alert(
+        "Режим просмотра",
+        "Нажмите «Изменить профиль», чтобы обновить данные."
+      );
       return;
     }
     try {
@@ -152,7 +158,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         isStaff: current?.isStaff ?? false,
         avatarUri: avatarUri ?? null,
         specialty: specialty,
-        employeeId: current?.employeeId || "", // сохраняем существующий или оставляем пустым
+        employeeId: current?.employeeId || "",
         workLocation: workLocation.trim(),
         issuedHistory: current?.issuedHistory || [],
       };
@@ -171,7 +177,6 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleLogout = async () => {
     try {
-      // при желании можешь заменить на точечное удаление только профиля
       await AsyncStorage.clear();
       setProfile(null);
       setName("");
@@ -293,9 +298,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Персональные данные</Text>
               {!isEditMode && profile?.employeeId && (
-                <Text style={styles.sectionHint}>
-                  ID: {profile.employeeId}
-                </Text>
+                <Text style={styles.sectionHint}>ID: {profile.employeeId}</Text>
               )}
             </View>
 

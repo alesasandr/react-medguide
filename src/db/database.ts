@@ -20,6 +20,11 @@ export function getDb(): any {
   return db;
 }
 
+// Функция для сброса кэша (используется в тестах)
+export function resetDbCache(): void {
+  db = null;
+}
+
 /**
  * Выполнение запросов, которые НЕ возвращают строки
  * (CREATE TABLE, INSERT, UPDATE, DELETE и т.п.)

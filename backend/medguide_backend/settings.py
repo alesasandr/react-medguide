@@ -68,7 +68,12 @@ if DEBUG:
     CORS_ALLOW_CREDENTIALS = True
 else:
     # В production используем строгий список разрешенных источников
-    CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8081').split(',')
+    cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8081')
+    # Фильтруем пустые значения из списка
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    # Если список пустой после фильтрации, используем дефолтное значение
+    if not CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:8081']
 
 ROOT_URLCONF = 'medguide_backend.urls'
 
@@ -92,25 +97,37 @@ WSGI_APPLICATION = 'medguide_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Используем SQLite для разработки (не требует установки PostgreSQL)
-# В production можно переключиться на PostgreSQL через переменные окружения
-if DEBUG:
+# Используем PostgreSQL если DB_HOST задан (Docker), иначе SQLite для разработки
+DB_HOST = os.getenv('DB_HOST', '')
+if DB_HOST:
+    # Production/Docker: используем PostgreSQL
+    DB_NAME = os.getenv('DB_NAME', 'medguide_db')
+    DB_USER = os.getenv('DB_USER', 'medguide_user')
+    DB_PASSWORD = os.getenv('DB_PASSWORD', 'your_password')
+    DB_PORT = os.getenv('DB_PORT', '5432')
+    
+    # Логируем настройки подключения (без пароля)
+    print(f"🔌 Database config: HOST={DB_HOST}, PORT={DB_PORT}, NAME={DB_NAME}, USER={DB_USER}")
+    
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': DB_NAME,
+            'USER': DB_USER,
+            'PASSWORD': DB_PASSWORD,
+            'HOST': DB_HOST,
+            'PORT': DB_PORT,
+            'OPTIONS': {
+                'connect_timeout': 10,
+            },
+        }
+    }
+else:
+    # Development: используем SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-else:
-    # Production: используем PostgreSQL
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME', 'medguide_db'),
-            'USER': os.getenv('DB_USER', 'medguide_user'),
-            'PASSWORD': os.getenv('DB_PASSWORD', 'your_password'),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '5432'),
         }
     }
 

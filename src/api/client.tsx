@@ -26,7 +26,7 @@ const getBaseUrl = (): string => {
   if (__DEV__) {
     // Разработка
     // Используем локальный IP для всех платформ (более надежно, чем 10.0.2.2)
-    const localIP = "192.168.1.10"; // Локальный IP вашего компьютера
+    const localIP = "91.132.160.137"; // Локальный IP вашего компьютера
     if (Platform.OS === "android") {
       // Пробуем сначала локальный IP, если не работает - используйте 10.0.2.2
       return `http://${localIP}:8000/api/`; // Локальный IP для Android эмулятора
@@ -39,7 +39,7 @@ const getBaseUrl = (): string => {
   }
 
   // Приоритет 3: Production URL
-  return "https://api.medguide.com/";
+  return "91.132.160.137";
 };
 
 const devBaseUrl = getBaseUrl();

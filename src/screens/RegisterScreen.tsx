@@ -13,7 +13,8 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
-import { registerUser } from "../api/authApi";
+import { registerUser, loginUser, getProfile } from "../api/authApi";
+import { tokenService } from "../services/tokenService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Register">;
 
@@ -48,26 +49,42 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setIsSubmitting(true);
 
-      const user = await registerUser({
-        full_name: fullName.trim(),
-        email: email.trim(),
-        password: password.trim(),
-        is_staff: false,
-      });
-
       const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!regex.test(email.trim())) {
         throw new Error("Некорректный формат e-mail");
       }
 
+      // Регистрируем пользователя
+      const registerResponse = await registerUser({
+        full_name: fullName.trim(),
+        email: email.trim(),
+        password: password.trim(),
+        is_staff: false,
+      });
+      const registeredUser = registerResponse.user;
+
+      // ✅ Автоматически логиним пользователя после регистрации
+      const loginResponse = await loginUser(email.trim(), password.trim());
+      
+      // Сохраняем токен аутентификации
+      if (loginResponse.token) {
+        await tokenService.saveToken({
+          accessToken: loginResponse.token,
+          tokenType: "Token",
+        });
+      }
+
+      // Загружаем профиль из БД
+      const profile = await getProfile();
+
       // ✅ Сохраняем профиль локально (для оффлайна)
       await saveUserProfile({
-        name: user.full_name || user.email,
-        isStaff: user.is_staff,
-        avatarUri: null,
-        specialty: "Терапевт",
-        employeeId: user.id ? `DOC-${user.id}` : `DOC-${Date.now()}`,
-        workLocation: "",
+        name: profile.full_name || registeredUser.email,
+        isStaff: profile.is_staff ?? false,
+        avatarUri: profile.avatar_url || null,
+        specialty: profile.specialty || "Терапевт",
+        employeeId: profile.employee_id || `DOC-${registeredUser.id}`,
+        workLocation: profile.work_location || "",
         issuedHistory: [],
       });
 

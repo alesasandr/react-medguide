@@ -7,17 +7,22 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import QRCode from "react-native-qrcode-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import { medicines, Medicine } from "../db/medicines";
+import { medicines as localMedicines, Medicine } from "../db/medicines";
 import {
   loadUserProfile,
   addIssuedRecord,
   MedicineIssuedRecord,
 } from "../storage/userStorage";
+import { medicinesApi } from "../api/medicinesApi";
+import { addIssuedMedicine } from "../api/authApi";
+import { serverToLocal, LocalMedicine } from "../services/medicineAdapter";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicineDetails">;
 
@@ -31,14 +36,75 @@ const STOCK_OVERRIDES_KEY = "@medguide_medicine_stock_overrides";
 const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
   const { id } = route.params;
 
+  const [medicine, setMedicine] = useState<LocalMedicine | null>(null);
   const [override, setOverride] = useState<StockOverride | null>(null);
   const [issueCount, setIssueCount] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSavingOverrides, setIsSavingOverrides] = useState(false); // ✅ Флаг для блокировки race condition
 
-  const medicine = useMemo<Medicine | undefined>(
-    () => medicines.find((m) => m.id === id),
-    [id]
+  // Загрузка данных при монтировании
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Пытаемся загрузить с сервера
+        try {
+          const response = await medicinesApi.getById(id);
+          const serverMedicine = response.data;
+          const localMedicine = serverToLocal(serverMedicine);
+          setMedicine(localMedicine);
+        } catch (e) {
+          // Fallback на локальные данные при ошибке
+          const localMedicine = localMedicines.find((m) => m.id === id);
+          if (localMedicine) {
+            setMedicine({
+              id: localMedicine.id,
+              name: localMedicine.name,
+              mnn: localMedicine.mnn,
+              form: localMedicine.form,
+              dosage: localMedicine.dosage,
+              minStock: localMedicine.minStock,
+              stock: localMedicine.stock,
+              stockPerPack: localMedicine.stockPerPack,
+              diff: localMedicine.diff,
+              article: localMedicine.article,
+              qrPayload: localMedicine.qrPayload,
+            });
+          }
+        }
+      } catch (e) {
+        // Тихая обработка ошибок загрузки
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, [id]);
+
+  // Обновление данных при фокусе экрана
+  useFocusEffect(
+    React.useCallback(() => {
+      const sync = async () => {
+        try {
+          // Пытаемся синхронизировать с сервером
+          try {
+            const response = await medicinesApi.getById(id);
+            const serverMedicine = response.data;
+            const localMedicine = serverToLocal(serverMedicine);
+            setMedicine(localMedicine);
+          } catch (e) {
+            // Если синхронизация не удалась, оставляем текущие данные
+          }
+        } catch (e) {
+          // Тихая обработка ошибок синхронизации
+        }
+      };
+
+      sync();
+    }, [id])
   );
 
   useEffect(() => {
@@ -53,12 +119,25 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
           setOverride(byId);
         }
       } catch (e) {
-        console.log("Failed to load overrides:", e);
+        // Тихая обработка ошибок загрузки overrides
       }
     };
 
-    loadOverrides();
-  }, [id]);
+    if (medicine) {
+      loadOverrides();
+    }
+  }, [id, medicine]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.root}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3390ec" />
+          <Text style={styles.loadingText}>Загрузка препарата...</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!medicine) {
     return (
@@ -102,7 +181,7 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
 
     // ✅ Проверка блокировки race condition
     if (isSavingOverrides) {
-      console.warn("⚠️ Попытка двойной сохранения, отмена");
+      // Предотвращение двойной сохранения
       return;
     }
 
@@ -148,7 +227,7 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
         JSON.stringify(updatedAll)
       );
 
-      // Сохраняем запись в историю
+      // Сохраняем запись в историю локально
       const profile = await loadUserProfile();
       if (profile) {
         const record: MedicineIssuedRecord = {
@@ -163,6 +242,18 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
         await addIssuedRecord(record);
       }
 
+      // Отправляем на сервер
+      try {
+        await addIssuedMedicine(id, issueCount);
+        // Выдача препарата сохранена на сервере
+      } catch (e) {
+        // Не удалось сохранить выдачу на сервере
+        // Не прерываем процесс, если сервер недоступен
+      }
+
+      // Обновляем остаток на сервере (если есть API для обновления)
+      // Пока оставляем только локальное обновление через overrides
+
       setOverride(updatedOverride);
       setIssueCount(0);
 
@@ -171,7 +262,6 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
         `Выдано ${issueCount} ед. препарата.\nТекущий остаток: ${newStock}.`
       );
     } catch (e) {
-      console.log("Failed to issue medicine:", e);
       Alert.alert("Ошибка", "Не удалось сохранить выдачу препарата");
     } finally {
       setIsSaving(false);
@@ -457,6 +547,16 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: "#b91c1c",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#6b7280",
   },
 });
 

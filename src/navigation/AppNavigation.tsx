@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
+import ResetPasswordConfirmScreen from "../screens/ResetPasswordConfirmScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import InstructionsListScreen from "../screens/InstructionsListScreen";
@@ -21,6 +22,7 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   ResetPassword: undefined;
+  ResetPasswordConfirm: { uid: string; token: string };
   Home: undefined;
   Profile: undefined;
   IssuedHistory: undefined;
@@ -57,6 +59,12 @@ const AppNavigation: React.FC = () => {
         name="ResetPassword"
         component={ResetPasswordScreen}
         options={{ title: "Восстановить пароль" }}
+      />
+
+      <Stack.Screen
+        name="ResetPasswordConfirm"
+        component={ResetPasswordConfirmScreen}
+        options={{ title: "Новый пароль" }}
       />
 
       <Stack.Screen

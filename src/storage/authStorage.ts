@@ -15,7 +15,7 @@ export const saveAuthUser = async (user: AuthUser) => {
   try {
     await AsyncStorage.setItem('auth_user', JSON.stringify(user))
   } catch (e) {
-    console.error('Ошибка сохранения auth user:', e)
+    // Тихая обработка ошибок сохранения auth user
   }
 }
 
@@ -25,7 +25,7 @@ export const loadAuthUser = async (): Promise<AuthUser | null> => {
     const data = await AsyncStorage.getItem('auth_user')
     return data ? JSON.parse(data) : null
   } catch (e) {
-    console.error('Ошибка загрузки auth user:', e)
+    // Тихая обработка ошибок загрузки auth user
     return null
   }
 }
@@ -35,6 +35,6 @@ export const clearAuthUser = async () => {
   try {
     await AsyncStorage.removeItem('auth_user')
   } catch (e) {
-    console.error('Ошибка очистки auth user:', e)
+    // Тихая обработка ошибок очистки auth user
   }
 }

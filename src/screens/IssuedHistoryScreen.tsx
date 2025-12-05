@@ -8,9 +8,11 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import { getIssuedHistory, MedicineIssuedRecord } from "../storage/userStorage";
+import { getIssuedHistory, MedicineIssuedRecord, saveUserProfile, loadUserProfile } from "../storage/userStorage";
+import { getIssuedMedicines } from "../api/authApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "IssuedHistory">;
 
@@ -18,13 +20,14 @@ const IssuedHistoryScreen: React.FC<Props> = () => {
   const [history, setHistory] = useState<MedicineIssuedRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Загрузка истории при монтировании
   useEffect(() => {
     const load = async () => {
       try {
         const records = await getIssuedHistory();
         setHistory(records);
       } catch (e) {
-        console.log("Failed to load history:", e);
+        // Тихая обработка ошибок загрузки истории
       } finally {
         setIsLoading(false);
       }
@@ -32,6 +35,59 @@ const IssuedHistoryScreen: React.FC<Props> = () => {
 
     load();
   }, []);
+
+  // Синхронизация истории с сервером при фокусе экрана
+  useFocusEffect(
+    React.useCallback(() => {
+      const syncHistory = async () => {
+        try {
+          setIsLoading(true);
+          
+          // Сначала загружаем локальную историю для быстрого отображения
+          const localRecords = await getIssuedHistory();
+          setHistory(localRecords);
+
+          // Затем синхронизируем с сервером
+          try {
+            const serverRecords = await getIssuedMedicines();
+            
+            // Преобразуем данные сервера в формат локального хранилища
+            const syncedRecords: MedicineIssuedRecord[] = serverRecords.map((record) => ({
+              id: String(record.id),
+              medicineId: record.medicine.id,
+              medicineName: record.medicine.name,
+              quantity: record.quantity,
+              issuedAt: record.issued_at,
+              doctorId: record.doctor_id || "",
+              doctorName: record.doctor_name || "",
+            }));
+
+            // Обновляем профиль с синхронизированной историей
+            const profile = await loadUserProfile();
+            if (profile) {
+              const updatedProfile = {
+                ...profile,
+                issuedHistory: syncedRecords,
+              };
+              await saveUserProfile(updatedProfile);
+              setHistory(syncedRecords);
+            } else {
+              setHistory(syncedRecords);
+            }
+          } catch (e) {
+            // Если синхронизация не удалась, используем локальные данные
+            // Не удалось синхронизировать историю с сервером
+          }
+        } catch (e) {
+          // Тихая обработка ошибок загрузки истории
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      syncHistory();
+    }, [])
+  );
 
   const formatDate = (isoString: string) => {
     try {
@@ -55,9 +111,11 @@ const IssuedHistoryScreen: React.FC<Props> = () => {
         <Text style={styles.quantity}>{item.quantity} шт.</Text>
       </View>
       <Text style={styles.issuedAt}>{formatDate(item.issuedAt)}</Text>
-      <Text style={styles.doctorInfo}>
-        {item.doctorName} ({item.doctorId})
-      </Text>
+      {(item.doctorName || item.doctorId) && (
+        <Text style={styles.doctorInfo}>
+          {item.doctorName || ""} {item.doctorId ? `(${item.doctorId})` : ""}
+        </Text>
+      )}
     </View>
   );
 

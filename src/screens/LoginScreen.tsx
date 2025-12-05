@@ -14,6 +14,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
 import { loginUser, getProfile } from "../api/authApi";
+import { tokenService } from "../services/tokenService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -32,7 +33,16 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       setIsSubmitting(true);
 
       // Авторизуемся на сервере
-      const user = await loginUser(email.trim(), password.trim());
+      const loginResponse = await loginUser(email.trim(), password.trim());
+      const user = loginResponse.user;
+
+      // Сохраняем токен аутентификации
+      if (loginResponse.token) {
+        await tokenService.saveToken({
+          accessToken: loginResponse.token,
+          tokenType: "Token",
+        });
+      }
 
       // Загружаем профиль из БД
       const profile = await getProfile();
@@ -50,7 +60,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
       navigation.replace("Home");
     } catch (e: any) {
-      console.log("Login error:", e);
       if (e?.code === "USER_NOT_FOUND") {
         Alert.alert("Ошибка", "Пользователь не найден");
       } else if (e?.code === "WRONG_PASSWORD") {

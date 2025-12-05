@@ -58,7 +58,7 @@ export async function saveUserProfile(
     const normalized = withDefaults(profile, existing);
     await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(normalized));
   } catch (e) {
-    console.warn("saveUserProfile error", e);
+    // Тихая обработка ошибок сохранения профиля
   }
 }
 
@@ -75,7 +75,7 @@ export async function loadUserProfile(): Promise<UserProfile | null> {
         : [],
     });
   } catch (e) {
-    console.warn("loadUserProfile error", e);
+    // Тихая обработка ошибок загрузки профиля
     return null;
   }
 }
@@ -90,7 +90,7 @@ export async function addIssuedRecord(
     profile.issuedHistory = [record, ...(profile.issuedHistory || [])];
     await saveUserProfile(profile);
   } catch (e) {
-    console.warn("addIssuedRecord error", e);
+    // Тихая обработка ошибок добавления записи
   }
 }
 
@@ -99,7 +99,7 @@ export async function getIssuedHistory(): Promise<MedicineIssuedRecord[]> {
     const profile = await loadUserProfile();
     return profile?.issuedHistory ?? [];
   } catch (e) {
-    console.warn("getIssuedHistory error", e);
+    // Тихая обработка ошибок загрузки истории
     return [];
   }
 }
@@ -108,6 +108,6 @@ export async function clearUserProfile(): Promise<void> {
   try {
     await AsyncStorage.removeItem(USER_PROFILE_KEY);
   } catch (e) {
-    console.warn("clearUserProfile error", e);
+    // Тихая обработка ошибок очистки профиля
   }
 }

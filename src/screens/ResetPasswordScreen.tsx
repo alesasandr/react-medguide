@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import { API_BASE_URL } from "../config/apiConfig"; // ✅ Исправлен импорт (named import)
+import { requestPasswordReset } from "../api/authApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ResetPassword">;
 
@@ -28,30 +28,16 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation }) => {
 
     try {
       setIsSubmitting(true);
-
-      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Ошибка сервера: ${response.status}`);
-      }
-
+      await requestPasswordReset(email.trim());
       Alert.alert(
         "Готово",
         "Если такой пользователь существует, на почту отправлена ссылка для восстановления."
       );
       navigation.goBack();
     } catch (e: any) {
-      console.log("Reset password error:", e);
       Alert.alert(
         "Ошибка",
-        e?.message ?? "Не удалось отправить запрос на восстановление пароля"
+        e?.response?.data?.detail ?? e?.message ?? "Не удалось отправить запрос на восстановление пароля"
       );
     } finally {
       setIsSubmitting(false);

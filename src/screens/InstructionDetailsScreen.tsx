@@ -33,7 +33,7 @@ const InstructionDetailsScreen: React.FC<Props> = ({ route, navigation }) => {
           setInstruction(data);
         }
       } catch (e) {
-        console.error("Failed to load instruction details:", e);
+        // Тихая обработка ошибок загрузки деталей инструкции
         if (isMounted) {
           setError("Не удалось загрузить инструкцию");
         }

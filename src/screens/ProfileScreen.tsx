@@ -14,6 +14,7 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import {
@@ -23,7 +24,7 @@ import {
 } from "../storage/userStorage";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { updateProfile } from "../api/authApi";
+import { updateProfile, getProfile as getProfileFromServer } from "../api/authApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
@@ -60,6 +61,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     setWorkLocation(source.workLocation || "");
   };
 
+  // Загрузка профиля при монтировании
   useEffect(() => {
     const load = async () => {
       try {
@@ -69,7 +71,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           applyProfileToForm(storedProfile);
         }
       } catch (e) {
-        console.log("Load profile error:", e);
+        // Тихая обработка ошибок загрузки профиля
       } finally {
         setIsLoading(false);
       }
@@ -77,6 +79,48 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
     load();
   }, []);
+
+  // Обновление профиля при фокусе экрана (синхронизация с сервером)
+  useFocusEffect(
+    React.useCallback(() => {
+      const syncProfile = async () => {
+        try {
+          // Сначала загружаем локальный профиль для быстрого отображения
+          const storedProfile = await loadUserProfile();
+          if (storedProfile) {
+            setProfile(storedProfile);
+            applyProfileToForm(storedProfile);
+          }
+
+          // Затем синхронизируем с сервером
+          try {
+            const serverProfile = await getProfileFromServer();
+            const syncedProfile: UserProfile = {
+              name: serverProfile.full_name || storedProfile?.name || "",
+              isStaff: serverProfile.is_staff ?? storedProfile?.isStaff ?? false,
+              avatarUri: serverProfile.avatar_url || storedProfile?.avatarUri || null,
+              specialty: serverProfile.specialty || storedProfile?.specialty || "Терапевт",
+              employeeId: serverProfile.employee_id || storedProfile?.employeeId || "",
+              workLocation: serverProfile.work_location || storedProfile?.workLocation || "",
+              issuedHistory: storedProfile?.issuedHistory || [],
+            };
+            
+            // Сохраняем синхронизированный профиль
+            await saveUserProfile(syncedProfile);
+            setProfile(syncedProfile);
+            applyProfileToForm(syncedProfile);
+          } catch (e) {
+            // Если синхронизация не удалась, используем локальные данные
+            // Не удалось синхронизировать профиль с сервером
+          }
+        } catch (e) {
+          // Тихая обработка ошибок загрузки профиля
+        }
+      };
+
+      syncProfile();
+    }, [])
+  );
 
   const handlePickAvatar = async () => {
     if (!isEditMode) {
@@ -110,7 +154,6 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         setAvatarUri(uri);
       }
     } catch (e) {
-      console.log("Image pick error:", e);
       Alert.alert("Ошибка", "Не удалось выбрать изображение");
     }
   };
@@ -139,7 +182,6 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
       Alert.alert("Готово", "Фото профиля удалено");
     } catch (e) {
-      console.log("Delete avatar error:", e);
       Alert.alert("Ошибка", "Не удалось удалить фото");
     }
   };
@@ -169,14 +211,19 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
       // Затем синхронизируем с БД
       try {
+        // Отправляем на сервер только URL, не локальные пути
+        const avatarUrl = avatarUri && (avatarUri.startsWith('http://') || avatarUri.startsWith('https://'))
+          ? avatarUri
+          : null;
+        
         await updateProfile({
           full_name: name.trim(),
           specialty: specialty,
           work_location: workLocation.trim(),
-          avatar_url: avatarUri || null,
+          avatar_url: avatarUrl,
         });
       } catch (e) {
-        console.log("Failed to sync profile to server:", e);
+        // Тихая обработка ошибок синхронизации - не показываем пользователю
         // Не прерываем работу если синхронизация не удалась
       }
 
@@ -184,7 +231,6 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       setIsEditMode(false);
       Alert.alert("Готово", "Профиль обновлён");
     } catch (e) {
-      console.log("Save profile error:", e);
       Alert.alert("Ошибка", "Не удалось сохранить профиль");
     } finally {
       setIsSaving(false);
@@ -205,7 +251,6 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         routes: [{ name: "Login" }],
       });
     } catch (e) {
-      console.log("Logout error:", e);
       Alert.alert("Ошибка", "Не удалось выйти из аккаунта");
     }
   };

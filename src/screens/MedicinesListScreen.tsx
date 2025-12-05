@@ -11,9 +11,12 @@ import {
   Keyboard,
   ActivityIndicator,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import { medicines, Medicine } from "../db/medicines";
+import { medicines as localMedicines, Medicine } from "../db/medicines";
+import { medicinesApi } from "../api/medicinesApi";
+import { serverArrayToLocal, LocalMedicine } from "../services/medicineAdapter";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicinesList">;
 
@@ -21,6 +24,74 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState(""); // Debounced query
   const [showOnlyLow, setShowOnlyLow] = useState(false);
+  const [medicines, setMedicines] = useState<LocalMedicine[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Загрузка данных при монтировании (fallback на локальные данные)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Пытаемся загрузить с сервера
+        try {
+          const response = await medicinesApi.getAll();
+          const serverMedicines = response.data;
+          const localMedicines = serverArrayToLocal(serverMedicines);
+          setMedicines(localMedicines);
+        } catch (e) {
+          // Fallback на локальные данные при ошибке
+          const localData = localMedicines.map((med) => ({
+            id: med.id,
+            name: med.name,
+            mnn: med.mnn,
+            form: med.form,
+            dosage: med.dosage,
+            minStock: med.minStock,
+            stock: med.stock,
+            stockPerPack: med.stockPerPack,
+            diff: med.diff,
+            article: med.article,
+            qrPayload: med.qrPayload,
+          }));
+          setMedicines(localData);
+          setError("Используются локальные данные (нет подключения к серверу)");
+        }
+      } catch (e) {
+        setError("Не удалось загрузить препараты");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  // Обновление данных при фокусе экрана
+  useFocusEffect(
+    React.useCallback(() => {
+      const sync = async () => {
+        try {
+          // Пытаемся синхронизировать с сервером
+          try {
+            const response = await medicinesApi.getAll();
+            const serverMedicines = response.data;
+            const localMedicines = serverArrayToLocal(serverMedicines);
+            setMedicines(localMedicines);
+            setError(null);
+          } catch (e) {
+            // Если синхронизация не удалась, оставляем текущие данные
+          }
+        } catch (e) {
+          // Тихая обработка ошибок синхронизации
+        }
+      };
+
+      sync();
+    }, [])
+  );
 
   // Debounce effect для поиска (300ms задержка)
   useEffect(() => {
@@ -31,9 +102,9 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const isBelowMin = (med: Medicine) => med.stock < med.minStock;
+  const isBelowMin = (med: LocalMedicine) => med.stock < med.minStock;
 
-  const filtered: Medicine[] = useMemo(() => {
+  const filtered: LocalMedicine[] = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase(); // Используем debounced query
     return medicines.filter((m) => {
       const matchesQuery =
@@ -42,11 +113,11 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
       const matchesLow = !showOnlyLow || isBelowMin(m);
       return matchesQuery && matchesLow;
     });
-  }, [debouncedQuery, showOnlyLow]); // Зависит от debounced query
+  }, [debouncedQuery, showOnlyLow, medicines]); // Зависит от debounced query и medicines
 
   // Оптимизация: useCallback для renderItem
   const renderItem = useCallback(
-    ({ item }: { item: Medicine }) => {
+    ({ item }: { item: LocalMedicine }) => {
       const shortage = Math.max(item.minStock - item.stock, 0);
       const isLowStock = shortage > 0;
 
@@ -93,7 +164,18 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   // Оптимизация: keyExtractor для правильного кэширования
-  const keyExtractor = useCallback((item: Medicine) => String(item.id), []);
+  const keyExtractor = useCallback((item: LocalMedicine) => String(item.id), []);
+
+  if (isLoading) {
+    return (
+      <View style={styles.root}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3390ec" />
+          <Text style={styles.loadingText}>Загрузка препаратов...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -102,6 +184,12 @@ const MedicinesListScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.subtitle}>
           Используйте поиск, чтобы быстро найти препарат по названию или МНН.
         </Text>
+        
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
         <TextInput
           style={styles.searchInput}
@@ -272,6 +360,29 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: "#6b7280",
+    textAlign: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  errorContainer: {
+    backgroundColor: "#fef3c7",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#fbbf24",
+  },
+  errorText: {
+    fontSize: 13,
+    color: "#92400e",
     textAlign: "center",
   },
 });

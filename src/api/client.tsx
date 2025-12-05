@@ -25,12 +25,16 @@ const getBaseUrl = (): string => {
   // Приоритет 2: URL в зависимости от среды
   if (__DEV__) {
     // Разработка
+    // Используем локальный IP для всех платформ (более надежно, чем 10.0.2.2)
+    const localIP = "192.168.1.10"; // Локальный IP вашего компьютера
     if (Platform.OS === "android") {
-      return "http://10.0.2.2:8000/api/"; // ✅ Правильно для Android эмулятора
+      // Пробуем сначала локальный IP, если не работает - используйте 10.0.2.2
+      return `http://${localIP}:8000/api/`; // Локальный IP для Android эмулятора
+      // Альтернатива: return "http://10.0.2.2:8000/api/";
     } else if (Platform.OS === "ios") {
-      return "http://192.168.100.2:8000/api/"; // ✅ Для iOS эмулятора используем локальный IP
+      return `http://${localIP}:8000/api/`; // Локальный IP для iOS эмулятора
     } else {
-      return "http://192.168.100.2:8000/api/"; // ✅ Для Web используем локальный IP
+      return `http://${localIP}:8000/api/`; // Локальный IP для Web
     }
   }
 
@@ -57,11 +61,12 @@ export const api = axios.create({
 // ✅ Интерцептор для логирования запросов и добавления JWT токена
 api.interceptors.request.use(
   async (config) => {
-    // ✅ Добавляем JWT токен в заголовок Authorization
+    // ✅ Добавляем токен аутентификации в заголовок Authorization
+    // DRF Token Authentication использует формат "Token <token>"
     const token = await tokenService.getToken();
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-      logger.debug("JWT token attached to request", {
+      config.headers.Authorization = `Token ${token}`;
+      logger.debug("Auth token attached to request", {
         url: config.url,
       });
     }

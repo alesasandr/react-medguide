@@ -72,29 +72,38 @@ function isTokenExpired(token: string): boolean {
 
 class TokenService {
   /**
-   * Сохранить JWT токен в защищённое хранилище
+   * Сохранить токен (JWT или простой токен) в защищённое хранилище
    */
   async saveToken(tokenData: TokenData): Promise<void> {
     try {
+      // Пытаемся декодировать как JWT
       const decoded = decodeToken(tokenData.accessToken);
-      if (!decoded) {
-        throw new Error("Invalid JWT format");
+      
+      if (decoded) {
+        // Это JWT токен
+        await AsyncStorage.multiSet([
+          [TOKEN_KEY, tokenData.accessToken],
+          [TOKEN_EXPIRY_KEY, String(decoded.exp)],
+        ]);
+
+        if (tokenData.refreshToken) {
+          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokenData.refreshToken);
+        }
+
+        logger.info("✅ JWT token saved", {
+          userId: decoded.sub,
+          expiresAt: new Date(decoded.exp * 1000).toISOString(),
+        });
+      } else {
+        // Это простой токен (например, DRF Token Authentication)
+        await AsyncStorage.setItem(TOKEN_KEY, tokenData.accessToken);
+        
+        if (tokenData.refreshToken) {
+          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokenData.refreshToken);
+        }
+
+        logger.info("✅ Simple token saved");
       }
-
-      // Сохраняем токены
-      await AsyncStorage.multiSet([
-        [TOKEN_KEY, tokenData.accessToken],
-        [TOKEN_EXPIRY_KEY, String(decoded.exp)],
-      ]);
-
-      if (tokenData.refreshToken) {
-        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokenData.refreshToken);
-      }
-
-      logger.info("✅ JWT token saved", {
-        userId: decoded.sub,
-        expiresAt: new Date(decoded.exp * 1000).toISOString(),
-      });
     } catch (e) {
       logger.error("Failed to save token", {
         error: e instanceof Error ? e.message : String(e),
@@ -114,8 +123,10 @@ class TokenService {
         return null;
       }
 
-      // Проверяем, не истёк ли токен
-      if (isTokenExpired(token)) {
+      // Проверяем, не истёк ли токен (только для JWT)
+      // Простые токены не имеют срока действия
+      const decoded = decodeToken(token);
+      if (decoded && isTokenExpired(token)) {
         logger.warn("JWT token expired");
         await this.removeToken();
         return null;
@@ -171,7 +182,14 @@ class TokenService {
       return false;
     }
 
-    return !isTokenExpired(token);
+    // Для JWT проверяем срок действия, для простых токенов просто проверяем наличие
+    const decoded = decodeToken(token);
+    if (decoded) {
+      return !isTokenExpired(token);
+    }
+    
+    // Простой токен - считаем валидным, если он есть
+    return true;
   }
 
   /**

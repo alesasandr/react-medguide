@@ -74,7 +74,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert("Готово", "Аккаунт создан успешно");
       navigation.replace("Home");
     } catch (e: any) {
-      console.log("Register error:", e);
       const message =
         (e && e.message) || (typeof e === "string" ? e : "Неизвестная ошибка");
       Alert.alert(

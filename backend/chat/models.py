@@ -20,7 +20,7 @@ class Profile(models.Model):
     avatar_url = models.URLField(blank=True, null=True)
     specialty = models.CharField(max_length=255, blank=True, default="Терапевт")
     work_location = models.CharField(max_length=255, blank=True)
-    employee_id = models.CharField(max_length=50, unique=True, blank=True)
+    employee_id = models.CharField(max_length=50, unique=True, blank=True, null=True)
 
     def __str__(self) -> str:
         return self.full_name or self.user.username

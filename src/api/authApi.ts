@@ -26,6 +26,8 @@ export interface IssuedMedicine {
   };
   quantity: number;
   issued_at: string;
+  doctor_name?: string;
+  doctor_id?: string;
 }
 
 export type RegisterPayload = {
@@ -70,4 +72,20 @@ export async function addIssuedMedicine(medicineId: number, quantity: number) {
     quantity,
   });
   return res.data as IssuedMedicine;
+}
+
+// Запрос на восстановление пароля
+export async function requestPasswordReset(email: string) {
+  const res = await api.post("/auth/reset-password/", { email });
+  return res.data;
+}
+
+// Подтверждение восстановления пароля
+export async function confirmPasswordReset(uid: string, token: string, password: string) {
+  const res = await api.post("/auth/reset-password-confirm/", {
+    uid,
+    token,
+    password,
+  });
+  return res.data;
 }

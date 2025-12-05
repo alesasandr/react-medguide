@@ -1,20 +1,20 @@
-import { client } from "./client";
+import { api } from "./client";
 
 export const medicinesApi = {
   // Получить все лекарства
-  getAll: () => client.get("/medicines/"),
+  getAll: () => api.get("/medicines/"),
 
   // Получить лекарство по ID
-  getById: (id: number) => client.get(`/medicines/${id}/`),
+  getById: (id: number) => api.get(`/medicines/${id}/`),
 
   // Поиск по названию, артикулу или МНН
   search: (query: string) =>
-    client.get("/medicines/search/", { params: { q: query } }),
+    api.get("/medicines/search/", { params: { q: query } }),
 
   // Получить по артикулу
   getByArticle: (article: string) =>
-    client.get("/medicines/by_article/", { params: { article } }),
+    api.get("/medicines/by_article/", { params: { article } }),
 
   // Получить по QR коду
-  getByQr: (qr: string) => client.get("/medicines/by_qr/", { params: { qr } }),
+  getByQr: (qr: string) => api.get("/medicines/by_qr/", { params: { qr } }),
 };

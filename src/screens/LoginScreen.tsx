@@ -15,6 +15,7 @@ import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
 import { loginUser, getProfile } from "../api/authApi";
 import { tokenService } from "../services/tokenService";
+import { getHumanApiError } from "../utils/getHumanApiError";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -26,6 +27,17 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert("Ошибка", "Введите e-mail и пароль");
+      return;
+    }
+
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!regex.test(email.trim())) {
+      Alert.alert("Ошибка", "Некорректный формат e-mail");
+      return;
+    }
+
+    if (password.trim().length < 6) {
+      Alert.alert("Ошибка", "Пароль должен быть не менее 6 символов");
       return;
     }
 
@@ -60,13 +72,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
       navigation.replace("Home");
     } catch (e: any) {
-      if (e?.code === "USER_NOT_FOUND") {
-        Alert.alert("Ошибка", "Пользователь не найден");
-      } else if (e?.code === "WRONG_PASSWORD") {
-        Alert.alert("Ошибка", "Неверный пароль");
-      } else {
-        Alert.alert("Ошибка", "Не удалось выполнить вход");
-      }
+      const message = getHumanApiError(e);
+      Alert.alert("Ошибка", message || "Не удалось выполнить вход");
     } finally {
       setIsSubmitting(false);
     }

@@ -57,10 +57,13 @@ class Logger {
           console.log(...args);
           break;
         case LogLevel.WARN:
-          console.warn(...args);
+          // В RN/Expo `console.warn/error` может показываться как всплывающий баннер в UI.
+          // Нам нужен лог для разработки, но без "toast ERROR/WARN" в интерфейсе.
+          console.log(...args);
           break;
         case LogLevel.ERROR:
-          console.error(...args);
+          // См. комментарий выше: не используем console.error, чтобы не появлялся баннер "ERROR" в UI.
+          console.log(...args);
           break;
       }
     }

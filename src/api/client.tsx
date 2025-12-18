@@ -39,7 +39,8 @@ const getBaseUrl = (): string => {
   }
 
   // Приоритет 3: Production URL
-  return "91.132.160.137";
+  // Важно: baseURL должен включать протокол и /api/
+  return "http://91.132.160.137:8000/api/";
 };
 
 const devBaseUrl = getBaseUrl();

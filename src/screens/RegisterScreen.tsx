@@ -15,6 +15,7 @@ import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
 import { registerUser, loginUser, getProfile } from "../api/authApi";
 import { tokenService } from "../services/tokenService";
+import { getHumanApiError } from "../utils/getHumanApiError";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Register">;
 
@@ -88,11 +89,9 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         issuedHistory: [],
       });
 
-      Alert.alert("Готово", "Аккаунт создан успешно");
       navigation.replace("Home");
     } catch (e: any) {
-      const message =
-        (e && e.message) || (typeof e === "string" ? e : "Неизвестная ошибка");
+      const message = getHumanApiError(e);
       Alert.alert(
         "Ошибка регистрации",
         `Не удалось создать аккаунт:\n${message}`

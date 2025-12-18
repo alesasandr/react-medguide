@@ -70,42 +70,26 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Поиск по артикулу */}
           <TouchableOpacity
-            style={styles.accentButton}
+            style={styles.secondaryButton}
             onPress={() => navigation.navigate("MedicineCodeSearch")}
             activeOpacity={0.85}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <View style={styles.buttonRow}>
-              <View style={styles.buttonTextWrapper}>
-                <Text style={styles.accentButtonTitle}>
-                  Найти препарат по артикулу
-                </Text>
-                <Text style={styles.accentButtonText}>
-                  Введите артикул вручную.
-                </Text>
-              </View>
-              <Text style={styles.buttonChevronAccent}>›</Text>
-            </View>
+            <Text style={styles.secondaryButtonText}>
+              Найти препарат по артикулу
+            </Text>
           </TouchableOpacity>
 
           {/* Новый вариант — сканирование QR-кода */}
           <TouchableOpacity
-            style={styles.accentButton}
+            style={styles.secondaryButton}
             onPress={() => navigation.navigate("ScanMedicine")}
             activeOpacity={0.85}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <View style={styles.buttonRow}>
-              <View style={styles.buttonTextWrapper}>
-                <Text style={styles.accentButtonTitle}>
-                  Сканировать QR-код препарата
-                </Text>
-                <Text style={styles.accentButtonText}>
-                  Быстрый переход в карточку препарата по QR.
-                </Text>
-              </View>
-              <Text style={styles.buttonChevronAccent}>›</Text>
-            </View>
+            <Text style={styles.secondaryButtonText}>
+              Сканировать QR-код препарата
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

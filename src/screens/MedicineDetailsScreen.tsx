@@ -23,6 +23,7 @@ import {
 import { medicinesApi } from "../api/medicinesApi";
 import { addIssuedMedicine } from "../api/authApi";
 import { serverToLocal, LocalMedicine } from "../services/medicineAdapter";
+import { getHumanApiError } from "../utils/getHumanApiError";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MedicineDetails">;
 
@@ -247,8 +248,7 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
         await addIssuedMedicine(id, issueCount);
         // Выдача препарата сохранена на сервере
       } catch (e) {
-        // Не удалось сохранить выдачу на сервере
-        // Не прерываем процесс, если сервер недоступен
+        Alert.alert("Ошибка", getHumanApiError(e));
       }
 
       // Обновляем остаток на сервере (если есть API для обновления)
@@ -262,7 +262,7 @@ const MedicineDetailsScreen: React.FC<Props> = ({ route }) => {
         `Выдано ${issueCount} ед. препарата.\nТекущий остаток: ${newStock}.`
       );
     } catch (e) {
-      Alert.alert("Ошибка", "Не удалось сохранить выдачу препарата");
+      Alert.alert("Ошибка", getHumanApiError(e));
     } finally {
       setIsSaving(false);
       setIsSavingOverrides(false); // ✅ Разблокируем

@@ -16,6 +16,8 @@ from rest_framework.authtoken.models import Token
 from chat.models import Profile, IssuedMedicine
 from chat.serializers import ProfileSerializer, IssuedMedicineSerializer
 from medicines.models import Medicine
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 
 @csrf_exempt
@@ -36,6 +38,18 @@ def register_view(request):
     if not email or not password:
         return JsonResponse(
             {"detail": "Email и пароль обязательны"}, status=400
+        )
+
+    # Валидация email
+    try:
+        validate_email(email)
+    except ValidationError:
+        return JsonResponse({"detail": "Некорректный формат e-mail"}, status=400)
+
+    # Валидация пароля
+    if len(password) < 6:
+        return JsonResponse(
+            {"detail": "Пароль должен быть не менее 6 символов"}, status=400
         )
 
     if User.objects.filter(username=email).exists():
@@ -80,6 +94,18 @@ def login_view(request):
     if not email or not password:
         return JsonResponse(
             {"detail": "Email и пароль обязательны"}, status=400
+        )
+
+    # Валидация email (чтобы не делать authenticate на мусорных строках)
+    try:
+        validate_email(email)
+    except ValidationError:
+        return JsonResponse({"detail": "Некорректный формат e-mail"}, status=400)
+
+    # Валидация пароля (в проекте пароль минимум 6)
+    if len(password) < 6:
+        return JsonResponse(
+            {"detail": "Пароль должен быть не менее 6 символов"}, status=400
         )
 
     user = authenticate(request, username=email, password=password)

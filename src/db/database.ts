@@ -1,9 +1,7 @@
 // src/db/database.ts
 import * as SQLite from "expo-sqlite";
 
-// Обходим строгие типы expo-sqlite: работаем через any,
-// потому что старый API (openDatabase, transaction, executeSql)
-// в рантайме есть, но типы под него уже не выдают.
+// Обходим типы expo-sqlite через any, чтобы не ругался TS на новые методы
 const SQLiteAny: any = SQLite;
 
 let db: any = null;
@@ -11,10 +9,20 @@ let db: any = null;
 // Открытие / кеширование подключения к БД
 export function getDb(): any {
   if (!db) {
-    // старый проверенный API
-    db = SQLiteAny.openDatabase("medguide.db");
+    if (!SQLiteAny.openDatabaseSync) {
+      // Если сюда попадём — видно будет в ошибке
+      throw new Error("expo-sqlite: openDatabaseSync is not available");
+    }
+
+    // Новый API: синхронное открытие базы
+    db = SQLiteAny.openDatabaseSync("medguide.db");
   }
   return db;
+}
+
+// Функция для сброса кэша (используется в тестах)
+export function resetDbCache(): void {
+  db = null;
 }
 
 /**
@@ -26,27 +34,21 @@ export async function executeRun(
   params: any[] = []
 ): Promise<void> {
   const database = getDb();
+  const dbAny: any = database;
 
-  return new Promise<void>((resolve, reject) => {
-    database.transaction(
-      (tx: any) => {
-        tx.executeSql(
-          sql,
-          params,
-          (_tx: any, _result: any) => {
-            resolve();
-          },
-          (_tx: any, error: any) => {
-            reject(error);
-            return false;
-          }
-        );
-      },
-      (error: any) => {
-        reject(error);
-      }
-    );
-  });
+  if (typeof dbAny.runAsync === "function") {
+    // Новый нормальный путь
+    await dbAny.runAsync(sql, params);
+    return;
+  }
+
+  if (typeof dbAny.execAsync === "function") {
+    // Fallback-режим: execAsync принимает массив команд
+    await dbAny.execAsync([{ sql, args: params }]);
+    return;
+  }
+
+  throw new Error("expo-sqlite: async API (runAsync/execAsync) is not available");
 }
 
 /**
@@ -58,35 +60,20 @@ export async function executeSelect<T = any>(
   params: any[] = []
 ): Promise<T[]> {
   const database = getDb();
+  const dbAny: any = database;
 
-  return new Promise<T[]>((resolve, reject) => {
-    database.transaction(
-      (tx: any) => {
-        tx.executeSql(
-          sql,
-          params,
-          (_tx: any, result: any) => {
-            const rows: T[] = [];
-            const len = result.rows.length;
-            for (let i = 0; i < len; i++) {
-              rows.push(result.rows.item(i));
-            }
-            resolve(rows);
-          },
-          (_tx: any, error: any) => {
-            reject(error);
-            return false;
-          }
-        );
-      },
-      (error: any) => {
-        reject(error);
-      }
-    );
-  });
+  if (typeof dbAny.getAllAsync === "function") {
+    const rows = await dbAny.getAllAsync(sql, params);
+    // getAllAsync обычно сразу отдаёт массив объектов
+    return rows as T[];
+  }
+
+  throw new Error("expo-sqlite: getAllAsync is not available");
 }
 
-// Инициализация схемы БД (создаём таблицы, если ещё нет)
+/**
+ * Инициализация схемы БД (создаём таблицы, если ещё нет)
+ */
 export async function initDb() {
   await executeRun(`
     CREATE TABLE IF NOT EXISTS users (

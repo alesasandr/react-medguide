@@ -7,10 +7,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import API_BASE_URL from "../api/config";
+import { requestPasswordReset } from "../api/authApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ResetPassword">;
 
@@ -26,30 +28,16 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation }) => {
 
     try {
       setIsSubmitting(true);
-
-      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Ошибка сервера: ${response.status}`);
-      }
-
+      await requestPasswordReset(email.trim());
       Alert.alert(
         "Готово",
         "Если такой пользователь существует, на почту отправлена ссылка для восстановления."
       );
       navigation.goBack();
     } catch (e: any) {
-      console.log("Reset password error:", e);
       Alert.alert(
         "Ошибка",
-        e?.message ?? "Не удалось отправить запрос на восстановление пароля"
+        e?.response?.data?.detail ?? e?.message ?? "Не удалось отправить запрос на восстановление пароля"
       );
     } finally {
       setIsSubmitting(false);
@@ -57,34 +45,36 @@ const ResetPasswordScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.root}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Восстановление пароля</Text>
-        <Text style={styles.text}>
-          Введите e-mail, который вы использовали при регистрации.
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor="#9ca6b5"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-
-        <TouchableOpacity
-          style={[styles.button, isSubmitting && styles.buttonDisabled]}
-          onPress={handleReset}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.buttonText}>
-            {isSubmitting ? "Отправляем..." : "Отправить ссылку"}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.root}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Восстановление пароля</Text>
+          <Text style={styles.text}>
+            Введите e-mail, который вы использовали при регистрации.
           </Text>
-        </TouchableOpacity>
+
+          <TextInput
+            style={styles.input}
+            placeholder="E-mail"
+            placeholderTextColor="#9ca6b5"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+
+          <TouchableOpacity
+            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            onPress={handleReset}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.buttonText}>
+              {isSubmitting ? "Отправляем..." : "Отправить ссылку"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 

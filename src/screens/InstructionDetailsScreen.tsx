@@ -1,56 +1,63 @@
-// src/screens/InstructionsListScreen.tsx
+// src/screens/InstructionDetailsScreen.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
-  TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import { fetchInstructions, type Instruction } from "../api/instructionsApi";
+import { fetchInstructionById, type Instruction } from "../api/instructionsApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "InstructionDetails">;
 
-const InstructionsListScreen: React.FC<Props> = ({ navigation }) => {
-  const [items, setItems] = useState<Instruction[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+const InstructionDetailsScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { id } = route.params; // ✅ Получаем ID из параметров
+  const [instruction, setInstruction] = useState<Instruction | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true; // ✅ Флаг для mount state
+
     const load = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const data = await fetchInstructions();
-        setItems(data);
+        const data = await fetchInstructionById(id); // ✅ Правильно загружаем одну инструкцию
+        if (isMounted) {
+          setInstruction(data);
+        }
       } catch (e) {
-        console.log("Load instructions error:", e);
-        setError("Не удалось загрузить инструкции");
+        // Тихая обработка ошибок загрузки деталей инструкции
+        if (isMounted) {
+          setError("Не удалось загрузить инструкцию");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     load();
-  }, []);
 
-  const openDetails = (item: Instruction) => {
-  navigation.navigate("InstructionDetails", {
-    id: item.id,
-  })
-}
-
+    // ✅ Cleanup функция
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   if (isLoading) {
     return (
       <View style={styles.root}>
         <View style={styles.cardCenter}>
           <ActivityIndicator size="large" color="#3390ec" />
-          <Text style={styles.loadingText}>Загружаем инструкции...</Text>
+          <Text style={styles.loadingText}>Загружаем инструкцию...</Text>
         </View>
       </View>
     );
@@ -61,16 +68,28 @@ const InstructionsListScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.root}>
         <View style={styles.cardCenter}>
           <Text style={styles.error}>{error}</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>← Назад</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  if (!items.length) {
+  if (!instruction) {
     return (
       <View style={styles.root}>
         <View style={styles.cardCenter}>
-          <Text style={styles.emptyText}>Инструкции пока не добавлены</Text>
+          <Text style={styles.emptyText}>Инструкция не найдена</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>← Назад</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -78,29 +97,22 @@ const InstructionsListScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.root}>
-      <View style={styles.card}>
-        <FlatList
-          data={items}
-          keyExtractor={(item) => String(item.id)}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => openDetails(item)}
-            >
-              <View style={styles.iconCircle}>
-                <Text style={styles.iconText}>📄</Text>
-              </View>
-              <View style={styles.textBlock}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.subtitle} numberOfLines={2}>
-                  {item.shortText}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
+      <ScrollView style={styles.card} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.backArrow}>← Назад</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>{instruction.title}</Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.shortText}>{instruction.shortText}</Text>
+
+        <View style={styles.fullTextContainer}>
+          <Text style={styles.fullText}>{instruction.fullText}</Text>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -115,7 +127,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#ffffff",
     borderRadius: 20,
-    padding: 12,
+    padding: 16,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -136,39 +148,50 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
   },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
+  header: {
+    marginBottom: 16,
   },
-  separator: {
-    height: 1,
-    backgroundColor: "#f0f0f0",
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#d2e6ff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  iconText: {
-    fontSize: 20,
-  },
-  textBlock: {
-    flex: 1,
+  backArrow: {
+    fontSize: 14,
+    color: "#3390ec",
+    marginBottom: 12,
+    fontWeight: "600",
   },
   title: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "700",
     color: "#000",
+    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 13,
-    color: "#6c6c6c",
-    marginTop: 2,
+  divider: {
+    height: 1,
+    backgroundColor: "#e0e0e0",
+    marginBottom: 16,
+  },
+  shortText: {
+    fontSize: 15,
+    color: "#555",
+    marginBottom: 16,
+    lineHeight: 21,
+  },
+  fullTextContainer: {
+    marginTop: 8,
+  },
+  fullText: {
+    fontSize: 14,
+    color: "#4a4a4a",
+    lineHeight: 20,
+  },
+  backButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#3390ec",
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   loadingText: {
     fontSize: 15,
@@ -182,9 +205,9 @@ const styles = StyleSheet.create({
   },
   error: {
     fontSize: 16,
-    color: "red",
+    color: "#cc0000",
     textAlign: "center",
   },
 });
 
-export default InstructionsListScreen;
+export default InstructionDetailsScreen;

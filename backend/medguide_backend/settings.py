@@ -9,32 +9,34 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']  # для разработки, потом можно ужесточить
-
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-n$g7s4vxaoyyxcet7nq6w8)vr!)5kbmhh!#w7n1h5=nwoz$asg'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-n$g7s4vxaoyyxcet7nq6w8)vr!)5kbmhh!#w7n1h5=nwoz$asg')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
-
-
+# Разрешаем все хосты в режиме разработки для Android эмулятора
+# В production это должно быть строго ограничено!
+if DEBUG:
+    ALLOWED_HOSTS = ['*']  # Разрешаем все хосты в разработке
+else:
+    ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,10.0.2.2').split(',')
 
 # Application definition
 
 INSTALLED_APPS = [
+    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -43,16 +45,39 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
     "rest_framework",
+    "rest_framework.authtoken",  # Для токенов аутентификации
     "corsheaders",
     "chat",
+    "medicines",
 ]
 
-
-
+# Jazzmin (beautiful Django admin theme)
+JAZZMIN_SETTINGS = {
+    "site_title": "MedGuide Admin",
+    "site_header": "MedGuide",
+    "site_brand": "MedGuide",
+    "welcome_sign": "Панель управления MedGuide",
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "show_ui_builder": True,
+    # Выключаем переключатель языка, чтобы не зависеть от наличия i18n маршрутов
+    # (иначе Jazzmin пытается reverse('set_language') и падает 500)
+    "language_chooser": False,
+    "icons": {
+        "auth.user": "fas fa-user",
+        "auth.group": "fas fa-users",
+        "authtoken.token": "fas fa-key",
+        "chat.profile": "fas fa-id-card",
+        "chat.issuedmedicine": "fas fa-pills",
+        "chat.instruction": "fas fa-book",
+        "medicines.medicine": "fas fa-capsules",
+    },
+}
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # <- первым
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -61,11 +86,19 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
-
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-
-
+# CORS настройки для разработки
+if DEBUG:
+    # В режиме разработки разрешаем все источники для удобства тестирования
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+else:
+    # В production используем строгий список разрешенных источников
+    cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8081')
+    # Фильтруем пустые значения из списка
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    # Если список пустой после фильтрации, используем дефолтное значение
+    if not CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS = ['http://localhost:3000', 'http://localhost:8081']
 
 ROOT_URLCONF = 'medguide_backend.urls'
 
@@ -86,17 +119,42 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'medguide_backend.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Используем PostgreSQL если DB_HOST задан (Docker), иначе SQLite для разработки
+DB_HOST = os.getenv('DB_HOST', '')
+if DB_HOST:
+    # Production/Docker: используем PostgreSQL
+    DB_NAME = os.getenv('DB_NAME', 'medguide_db')
+    DB_USER = os.getenv('DB_USER', 'medguide_user')
+    DB_PASSWORD = os.getenv('DB_PASSWORD', 'your_password')
+    DB_PORT = os.getenv('DB_PORT', '5432')
+    
+    # Логируем настройки подключения (без пароля)
+    print(f"🔌 Database config: HOST={DB_HOST}, PORT={DB_PORT}, NAME={DB_NAME}, USER={DB_USER}")
+    
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': DB_NAME,
+            'USER': DB_USER,
+            'PASSWORD': DB_PASSWORD,
+            'HOST': DB_HOST,
+            'PORT': DB_PORT,
+            'OPTIONS': {
+                'connect_timeout': 10,
+            },
+        }
     }
-}
-
+else:
+    # Development: используем SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -116,11 +174,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-ru'
 
 TIME_ZONE = 'UTC'
 
@@ -128,22 +185,82 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# WhiteNoise: keep admin/jazzmin styles working under Gunicorn
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-from pathlib import Path
-import os
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Security settings for production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False') == 'True'
+    SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False') == 'True'
+    CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'False') == 'True'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# Email settings
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')  # Для разработки - вывод в консоль
+# Для production используйте SMTP:
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+# EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+# DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@medguide.com')
+
+# URL frontend приложения для ссылок восстановления
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8081')
+
+
+# Log exceptions (including 500 errors) to stdout so they appear in Docker logs
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        }
+    },
+    "loggers": {
+        # Django request/response cycle errors (shows traceback for 500)
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        # Template rendering errors
+        "django.template": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+}
+
 

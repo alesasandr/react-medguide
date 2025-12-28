@@ -7,12 +7,15 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Switch,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { saveUserProfile } from "../storage/userStorage";
-import { registerUser } from "../services/authService";
+import { registerUser, loginUser, getProfile } from "../api/authApi";
+import { tokenService } from "../services/tokenService";
+import { getHumanApiError } from "../utils/getHumanApiError";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Register">;
 
@@ -21,7 +24,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
-  const [isStaff, setIsStaff] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRegister = async () => {
@@ -40,119 +42,152 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    if (password.length < 6) {
+      Alert.alert("Ошибка", "Пароль должен быть не менее 6 символов");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
-      const user = await registerUser({
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!regex.test(email.trim())) {
+        throw new Error("Некорректный формат e-mail");
+      }
+
+      // Регистрируем пользователя
+      const registerResponse = await registerUser({
+        full_name: fullName.trim(),
         email: email.trim(),
         password: password.trim(),
-        fullName: fullName.trim(),
-        isStaff,
+        is_staff: false,
       });
+      const registeredUser = registerResponse.user;
 
+      // ✅ Автоматически логиним пользователя после регистрации
+      const loginResponse = await loginUser(email.trim(), password.trim());
+      
+      // Сохраняем токен аутентификации
+      if (loginResponse.token) {
+        await tokenService.saveToken({
+          accessToken: loginResponse.token,
+          tokenType: "Token",
+        });
+      }
+
+      // Загружаем профиль из БД
+      const profile = await getProfile();
+
+      // ✅ Сохраняем профиль локально (для оффлайна)
       await saveUserProfile({
-        name: user.full_name || user.email,
-        isStaff: user.is_staff,
-        avatarUri: null,
+        name: profile.full_name || registeredUser.email,
+        isStaff: profile.is_staff ?? false,
+        avatarUri: profile.avatar_url || null,
+        specialty: profile.specialty || "Терапевт",
+        employeeId: profile.employee_id || `DOC-${registeredUser.id}`,
+        workLocation: profile.work_location || "",
+        issuedHistory: [],
       });
 
-      Alert.alert("Готово", "Аккаунт создан локально");
       navigation.replace("Home");
     } catch (e: any) {
-      console.log("Register error:", e);
-      if (e?.code === "EMAIL_EXISTS") {
-        Alert.alert("Ошибка", "Пользователь с таким e-mail уже существует");
-      } else {
-        Alert.alert("Ошибка", "Не удалось создать аккаунт");
-      }
+      const message = getHumanApiError(e);
+      Alert.alert(
+        "Ошибка регистрации",
+        `Не удалось создать аккаунт:\n${message}`
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleBackToLogin = () => {
+    // текстовая кнопка "У меня уже есть аккаунт"
+    navigation.goBack();
+  };
+
   return (
-    <View style={styles.root}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Регистрация</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.root}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Регистрация</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>ФИО / имя</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Введите имя"
-            placeholderTextColor="#9ca6b5"
-            value={fullName}
-            onChangeText={setFullName}
-          />
+          <View style={styles.field}>
+            <Text style={styles.label}>ФИО / имя</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Введите имя"
+              placeholderTextColor="#9ca6b5"
+              value={fullName}
+              onChangeText={setFullName}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>E-mail</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Введите e-mail"
+              placeholderTextColor="#9ca6b5"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Пароль</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Придумайте пароль"
+              placeholderTextColor="#9ca6b5"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Повторите пароль</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Повторите пароль"
+              placeholderTextColor="#9ca6b5"
+              secureTextEntry
+              value={password2}
+              onChangeText={setPassword2}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              isSubmitting && styles.buttonDisabled,
+            ]}
+            onPress={handleRegister}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isSubmitting ? "Создаём..." : "Зарегистрироваться"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleBackToLogin}
+            activeOpacity={0.8}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Text style={styles.linkText}>У меня уже есть аккаунт</Text>
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>E-mail</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Введите e-mail"
-            placeholderTextColor="#9ca6b5"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Пароль</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Придумайте пароль"
-            placeholderTextColor="#9ca6b5"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Повторите пароль</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Повторите пароль"
-            placeholderTextColor="#9ca6b5"
-            secureTextEntry
-            value={password2}
-            onChangeText={setPassword2}
-          />
-        </View>
-
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Я сотрудник медорганизации</Text>
-          <Switch
-            value={isStaff}
-            onValueChange={setIsStaff}
-            thumbColor={isStaff ? "#3390ec" : "#f4f3f4"}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            isSubmitting && styles.buttonDisabled,
-          ]}
-          onPress={handleRegister}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isSubmitting ? "Создаём..." : "Зарегистрироваться"}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.replace("Login")}
-        >
-          <Text style={styles.linkText}>У меня уже есть аккаунт</Text>
-        </TouchableOpacity>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -191,23 +226,12 @@ const styles = StyleSheet.create({
   },
   input: {
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#d0d7e6",
     backgroundColor: "#f5f7fb",
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
-  },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  switchLabel: {
-    fontSize: 14,
-    color: "#4a4a4a",
-    flexShrink: 1,
-    paddingRight: 8,
+    borderWidth: 0,
+    borderColor: "transparent", // убираем обводку
   },
   primaryButton: {
     borderRadius: 999,
@@ -226,11 +250,18 @@ const styles = StyleSheet.create({
   },
   linkButton: {
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 8,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#dbeafe",
   },
   linkText: {
     color: "#3390ec",
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
 

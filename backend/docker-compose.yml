@@ -1,11 +1,54 @@
-version: "3.9"
+version: "3.3"
 
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: medguide-db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME:-medguide_db}
+      POSTGRES_USER: ${DB_USER:-medguide_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-medguide_user} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - medguide-network
+
   django:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: medguide-backend
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --config gunicorn_config.py medguide_backend.wsgi:application
+    volumes:
+      - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - medguide-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  medguide-network:
+    driver: bridge

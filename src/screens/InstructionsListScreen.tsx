@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { fetchInstructions, type Instruction } from "../api/instructionsApi";
@@ -20,6 +21,7 @@ const InstructionsListScreen: React.FC<Props> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Загрузка инструкций при монтировании
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
@@ -29,7 +31,7 @@ const InstructionsListScreen: React.FC<Props> = ({ navigation }) => {
         const data = await fetchInstructions();
         setItems(data);
       } catch (e) {
-        console.log("Load instructions error:", e);
+        // Тихая обработка ошибок загрузки инструкций
         setError("Не удалось загрузить инструкции");
       } finally {
         setIsLoading(false);
@@ -38,6 +40,28 @@ const InstructionsListScreen: React.FC<Props> = ({ navigation }) => {
 
     load();
   }, []);
+
+  // Обновление инструкций при фокусе экрана
+  useFocusEffect(
+    React.useCallback(() => {
+      const load = async () => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+          const data = await fetchInstructions();
+          setItems(data);
+        } catch (e) {
+          // Тихая обработка ошибок загрузки инструкций
+          setError("Не удалось загрузить инструкции");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      load();
+    }, [])
+  );
 
   const openDetails = (item: Instruction) => {
   navigation.navigate("InstructionDetails", {

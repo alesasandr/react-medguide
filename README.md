@@ -16,7 +16,7 @@ MedGuide - это React Native приложение, построенное на
 <div style="display: flex; gap: 16px;">
   <img src="assets/screanshot/shot1.png" alt="Главный экран" width="200">
   <img src="assets/screanshot/shot2.png" alt="Карточка препарата" width="200">
-  <img src="assets/screanshot/shot2.png" alt="Профиль" width="200">
+  <img src="assets/screanshot/shot3.png" alt="Профиль" width="200">
 </div>
 
 

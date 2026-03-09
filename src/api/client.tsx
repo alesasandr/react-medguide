@@ -1,57 +1,22 @@
 // src/api/client.tsx
 import axios from "axios";
 import { Platform } from "react-native";
+import { getAxiosBaseUrl } from "./config";
 import { logger } from "../services/logger";
 import { tokenService } from "../services/tokenService";
 
-/**
- * Функция для получения правильного URL API в зависимости от платформы
- *
- * - На Android эмуляторе: http://10.0.2.2:8000/ (localhost перенаправляется)
- * - На iOS эмуляторе: http://localhost:8000/
- * - На физическом устройстве: IP адрес машины с бэкенду
- * - На Web: http://localhost:8000/
- * - В production: https://api.medguide.com/
- */
-const getBaseUrl = (): string => {
-  // Приоритет 1: Явно заданный URL в переменных окружения
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    logger.info("✅ Using custom API URL from env", {
-      url: process.env.EXPO_PUBLIC_API_URL,
-    });
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
-
-  // Приоритет 2: URL в зависимости от среды
-  if (__DEV__) {
-    // Разработка
-    // Используем локальный IP для всех платформ (более надежно, чем 10.0.2.2)
-    const localIP = "91.132.160.137"; // Локальный IP вашего компьютера
-    if (Platform.OS === "android") {
-      // Пробуем сначала локальный IP, если не работает - используйте 10.0.2.2
-      return `http://${localIP}:8000/api/`; // Локальный IP для Android эмулятора
-      // Альтернатива: return "http://10.0.2.2:8000/api/";
-    } else if (Platform.OS === "ios") {
-      return `http://${localIP}:8000/api/`; // Локальный IP для iOS эмулятора
-    } else {
-      return `http://${localIP}:8000/api/`; // Локальный IP для Web
-    }
-  }
-
-  // Приоритет 3: Production URL
-  return "91.132.160.137";
-};
-
-const devBaseUrl = getBaseUrl();
+// Поддержка старой переменной EXPO_PUBLIC_API_URL (полный URL с /api/)
+const baseURL =
+  process.env.EXPO_PUBLIC_API_URL || getAxiosBaseUrl();
 
 logger.info("🌐 API configured", {
-  baseURL: devBaseUrl,
+  baseURL,
   platform: Platform.OS,
   environment: __DEV__ ? "development" : "production",
 });
 
 export const api = axios.create({
-  baseURL: devBaseUrl,
+  baseURL,
   timeout: 15000, // ✅ Увеличили timeout с 10000
   headers: {
     "Content-Type": "application/json",

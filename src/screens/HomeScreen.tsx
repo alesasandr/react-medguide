@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { loadUserProfile, UserProfile } from "../storage/userStorage";
 
@@ -91,6 +92,24 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               Сканировать QR-код препарата
             </Text>
           </TouchableOpacity>
+
+          {/* ИИ помощник */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Chat")}
+            activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <LinearGradient
+              colors={["#8b5cf6", "#d946ef"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.aiButtonGradient}
+            >
+              <View style={styles.aiButtonContent}>
+                <Text style={styles.aiButtonTitle}>Спросить у ИИ ✨</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -163,13 +182,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  accentButton: {
-    borderRadius: 16,
-    backgroundColor: "#fef3c7",
+  aiButtonGradient: {
+    borderRadius: 999,
     paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: "#fbbf24",
+  },
+  aiButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  aiButtonTitle: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
   },
   buttonRow: {
     flexDirection: "row",
@@ -184,21 +209,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: "#bfdbfe",
     fontWeight: "300",
-  },
-  buttonChevronAccent: {
-    fontSize: 32,
-    color: "#f59e0b",
-    fontWeight: "300",
-  },
-  accentButtonTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#92400e",
-  },
-  accentButtonText: {
-    marginTop: 4,
-    fontSize: 13,
-    color: "#92400e",
   },
 });
 

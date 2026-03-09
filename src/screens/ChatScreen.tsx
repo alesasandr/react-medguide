@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import axios from "axios";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { loadUserProfile, UserProfile } from "../storage/userStorage";
 
@@ -26,10 +27,18 @@ type ChatMessage = {
 
 const CHAT_MESSAGES_KEY = "chatMessages";
 
+// Initialize OpenRouter API Key
+const apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY || "";
+
+const systemInstruction = `Ты — экспертный ИИ-помощник, созданный для консультации фармацевтов и аптечных работников.
+Твоя главная задача — помогать сотрудникам аптек правильно выдавать препараты пациентам, предлагать подходящие аналоги в случае отсутствия препарата, и давать общие краткие и безопасные медицинские рекомендации в рамках компетенции фармацевта.
+Отвечай профессионально, вежливо и лаконично. Всегда напоминай, что при серьезных симптомах пациенту следует обратиться к врачу.`;
+
 const ChatScreen: React.FC<Props> = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // загружаем профиль и сохранённые сообщения
   useEffect(() => {
@@ -69,7 +78,7 @@ const ChatScreen: React.FC<Props> = () => {
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || isLoading) return;
 
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -80,12 +89,72 @@ const ChatScreen: React.FC<Props> = () => {
 
     setMessages((prev) => {
       const updated = [...prev, newMessage];
-      // сохраняем в AsyncStorage
       persistMessages(updated);
       return updated;
     });
 
     setInput("");
+    setIsLoading(true);
+
+    try {
+      // Подготовка контекста сообщений для OpenRouter API
+      const apiMessages = [
+        { role: "system", content: systemInstruction },
+        ...messages.slice(-10).map((msg) => ({ // берем последние 10 сообщений для контекста
+          role: msg.fromMe ? "user" : "assistant",
+          content: msg.text,
+        })),
+        { role: "user", content: text },
+      ];
+
+      const response = await axios.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          model: "deepseek/deepseek-chat", // Используем deepseek-v3 через OpenRouter
+          messages: apiMessages,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://medguide.com", // Важно для OpenRouter
+            "X-Title": "MedGuide App", // Важно для OpenRouter
+          },
+          timeout: 45000,
+        }
+      );
+
+      const aiResponseText =
+        response.data?.choices?.[0]?.message?.content || "Не удалось получить ответ от ИИ.";
+
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: aiResponseText,
+        fromMe: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      setMessages((prev) => {
+        const updated = [...prev, aiMessage];
+        persistMessages(updated);
+        return updated;
+      });
+    } catch (error: any) {
+      console.error("OpenRouter API Error:", error?.response?.data || error.message);
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: `Извините, произошла ошибка: ${error?.response?.data?.error?.message || error.message || "Неизвестная ошибка"}.\nПроверьте API ключ и подключение к сети.`,
+        fromMe: false,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => {
+        const updated = [...prev, errorMessage];
+        persistMessages(updated);
+        return updated;
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderItem = ({ item }: { item: ChatMessage }) => (
@@ -95,7 +164,9 @@ const ChatScreen: React.FC<Props> = () => {
         item.fromMe ? styles.messageFromMe : styles.messageFromOther,
       ]}
     >
-      <Text style={styles.messageText}>{item.text}</Text>
+      <Text style={item.fromMe ? styles.messageTextMe : styles.messageTextOther}>
+        {item.text}
+      </Text>
     </View>
   );
 
@@ -122,13 +193,18 @@ const ChatScreen: React.FC<Props> = () => {
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
-            placeholder="Напишите сообщение..."
+            placeholder="Напишите сообщение ИИ..."
             placeholderTextColor="#9ca6b5"
             value={input}
             onChangeText={setInput}
+            editable={!isLoading}
           />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-            <Text style={styles.sendButtonText}>↑</Text>
+          <TouchableOpacity
+            style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
+            onPress={handleSend}
+            disabled={isLoading}
+          >
+            <Text style={styles.sendButtonText}>{isLoading ? "..." : "↑"}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -178,8 +254,11 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     backgroundColor: "#f1f2f7",
   },
-  messageText: {
-    color: "#333",
+  messageTextMe: {
+    color: "#ffffff",
+  },
+  messageTextOther: {
+    color: "#333333",
   },
   inputRow: {
     flexDirection: "row",
@@ -204,6 +283,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#3390ec",
     alignItems: "center",
     justifyContent: "center",
+  },
+  sendButtonDisabled: {
+    backgroundColor: "#9ca6b5",
   },
   sendButtonText: {
     color: "#fff",

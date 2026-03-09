@@ -95,18 +95,20 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* ИИ помощник */}
           <TouchableOpacity
+            style={styles.aiButtonWrapper}
             onPress={() => navigation.navigate("Chat")}
-            activeOpacity={0.85}
+            activeOpacity={0.8}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <LinearGradient
-              colors={["#8b5cf6", "#d946ef"]}
+              colors={["#6366f1", "#a855f7"]}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              end={{ x: 1, y: 0 }}
               style={styles.aiButtonGradient}
             >
               <View style={styles.aiButtonContent}>
-                <Text style={styles.aiButtonTitle}>Спросить у ИИ ✨</Text>
+                <Text style={styles.aiButtonTitle}>Спросить у ИИ</Text>
+                <Text style={styles.aiButtonChevron}>✦</Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -182,19 +184,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  aiButtonWrapper: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#a855f7",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    marginTop: 4,
+  },
   aiButtonGradient: {
-    borderRadius: 999,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
   },
   aiButtonContent: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
   aiButtonTitle: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  aiButtonChevron: {
+    color: "#ffffff",
+    fontSize: 20,
+    opacity: 0.9,
   },
   buttonRow: {
     flexDirection: "row",

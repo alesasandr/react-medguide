@@ -463,6 +463,7 @@ export const medicines: Medicine[] = rawMedicines.map((item) => {
   const article = buildArticle(item.id);
   return {
     ...item,
+    id: item.id + 1, // Сдвигаем на 1 для соответствия серверным ID (1-based)
     article,
     qrPayload: buildQrPayload(article),
   };

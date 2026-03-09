@@ -12,11 +12,12 @@ function getApiBaseUrl(): string {
   }
   if (__DEV__) {
     if (Platform.OS === "android") {
-      return "http://192.168.71.90:8000";
+      // 10.0.2.2 is the special alias to your host loopback interface (localhost) on the Android emulator
+      return "http://10.0.2.2:8000";
     }
     return "http://localhost:8000";
   }
-  return "http://localhost:8000";
+  return "https://api.medguide.com"; // Default for production
 }
 
 const API_BASE_URL = getApiBaseUrl();

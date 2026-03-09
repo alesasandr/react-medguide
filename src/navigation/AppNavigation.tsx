@@ -100,7 +100,10 @@ const AppNavigation: React.FC = () => {
       <Stack.Screen
         name="Chat"
         component={ChatScreen}
-        options={{ title: "Чат" }}
+        options={{
+          title: "ИИ-помощник",
+          headerTitleAlign: "left",
+        }}
       />
 
       <Stack.Screen

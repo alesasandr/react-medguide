@@ -25,6 +25,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { updateProfile, getProfile as getProfileFromServer } from "../api/authApi";
+import { getHumanApiError } from "../utils/getHumanApiError";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Profile">;
 
@@ -154,7 +155,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         setAvatarUri(uri);
       }
     } catch (e) {
-      Alert.alert("Ошибка", "Не удалось выбрать изображение");
+      Alert.alert("Ошибка", getHumanApiError(e));
     }
   };
 
@@ -182,7 +183,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
       Alert.alert("Готово", "Фото профиля удалено");
     } catch (e) {
-      Alert.alert("Ошибка", "Не удалось удалить фото");
+      Alert.alert("Ошибка", getHumanApiError(e));
     }
   };
 
@@ -223,15 +224,15 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           avatar_url: avatarUrl,
         });
       } catch (e) {
-        // Тихая обработка ошибок синхронизации - не показываем пользователю
-        // Не прерываем работу если синхронизация не удалась
+        // Показываем человеку причину с сервера (а не "ошибка 400")
+        Alert.alert("Ошибка", getHumanApiError(e));
       }
 
       setProfile(newProfile);
       setIsEditMode(false);
       Alert.alert("Готово", "Профиль обновлён");
     } catch (e) {
-      Alert.alert("Ошибка", "Не удалось сохранить профиль");
+      Alert.alert("Ошибка", getHumanApiError(e));
     } finally {
       setIsSaving(false);
     }
@@ -251,7 +252,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         routes: [{ name: "Login" }],
       });
     } catch (e) {
-      Alert.alert("Ошибка", "Не удалось выйти из аккаунта");
+      Alert.alert("Ошибка", getHumanApiError(e));
     }
   };
 

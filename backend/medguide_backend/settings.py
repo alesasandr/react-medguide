@@ -36,6 +36,7 @@ else:
 # Application definition
 
 INSTALLED_APPS = [
+    "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -50,9 +51,33 @@ INSTALLED_APPS = [
     "medicines",
 ]
 
+# Jazzmin (beautiful Django admin theme)
+JAZZMIN_SETTINGS = {
+    "site_title": "MedGuide Admin",
+    "site_header": "MedGuide",
+    "site_brand": "MedGuide",
+    "welcome_sign": "Панель управления MedGuide",
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "show_ui_builder": True,
+    # Выключаем переключатель языка, чтобы не зависеть от наличия i18n маршрутов
+    # (иначе Jazzmin пытается reverse('set_language') и падает 500)
+    "language_chooser": False,
+    "icons": {
+        "auth.user": "fas fa-user",
+        "auth.group": "fas fa-users",
+        "authtoken.token": "fas fa-key",
+        "chat.profile": "fas fa-id-card",
+        "chat.issuedmedicine": "fas fa-pills",
+        "chat.instruction": "fas fa-book",
+        "medicines.medicine": "fas fa-capsules",
+    },
+}
+
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -166,6 +191,9 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# WhiteNoise: keep admin/jazzmin styles working under Gunicorn
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -204,5 +232,35 @@ EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.Em
 
 # URL frontend приложения для ссылок восстановления
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8081')
+
+
+# Log exceptions (including 500 errors) to stdout so they appear in Docker logs
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        }
+    },
+    "loggers": {
+        # Django request/response cycle errors (shows traceback for 500)
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        # Template rendering errors
+        "django.template": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+}
 
 
